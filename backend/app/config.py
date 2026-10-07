@@ -20,9 +20,9 @@ class Settings(BaseSettings):
     WHATSAPP_PHONE_NUMBER_ID: Optional[str] = None
     
     # WAHA (WhatsApp HTTP API) Configuration
-    WAHA_BASE_URL: str = "http://localhost:3008"
+    WAHA_BASE_URL: str = "http://waha:3000"
     # Public/Internal URL where WAHA delivers webhooks to FastAPI:
-    WAHA_WEBHOOK_URL: str = "https://composite-detection-uphill.ngrok-free.dev/api/business/whatsapp/webhook"
+    WAHA_WEBHOOK_URL: str = "http://backend:8000/api/business/whatsapp/webhook"
     WAHA_API_KEY: Optional[str] = None
     DEFAULT_BUSINESS_ID: Union[int, str] = 1
     

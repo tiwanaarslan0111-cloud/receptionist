@@ -1,0 +1,14 @@
+venv/
+env/
+ENV/
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+static/audio/*.mp3
+!static/audio/.gitkeep
+.DS_Store

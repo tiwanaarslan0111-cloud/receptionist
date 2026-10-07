@@ -1,39 +1,10 @@
-# services:
-#   waha:
-#     image: devlikeapro/waha:arm
-#     container_name: waha_service
-#     restart: always
-#     environment:
-#       # Engine configuration (switch to WEBJS if NOWEB encounters stubborn issues)
-#       - WHATSAPP_DEFAULT_ENGINE=NOWEB
-#       # Force WAHA to pull the newest WhatsApp Web protocol version to stop "Couldn't link device" errors:
-#       - WAHA_NOWEB_WA_VERSION=auto-web
-#       - WAHA_NOWEB_WA_VERSION_FORCE=True
-#       - WAHA_ZIP_JSON_VALUE=True
-#       - WAHA_PRINT_QR=True
-#       - WAHA_LOG_LEVEL=info
-#       - WAHA_NO_API_KEY=True
-#       # Global default webhook configuration (only primary 'message' event)
-#       - WHATSAPP_HOOK_URL=https://composite-detection-uphill.ngrok-free.dev/api/business/whatsapp/webhook
-#       - WHATSAPP_HOOK_EVENTS=message
-#       # Session persistence directory
-#       - WAHA_LOCAL_STORE_BASE_DIR=/app/.sessions
-#     volumes:
-#       - waha_sessions:/app/.sessions
-#     ports:
-#       - "3008:3000"
-
-# volumes:
-#   waha_sessions:
-
-
-version: "3.8"
-
 services:
   waha:
     image: devlikeapro/waha:latest
     container_name: waha_service
     restart: always
+    ports:
+      - "3000:3000"
     environment:
       - WHATSAPP_DEFAULT_ENGINE=NOWEB
       - WAHA_NOWEB_WA_VERSION=auto-web
@@ -42,17 +13,36 @@ services:
       - WAHA_PRINT_QR=True
       - WAHA_LOG_LEVEL=info
       - WAHA_NO_API_KEY=True
-      # Dashboard Basic Auth credentials:
       - WAHA_DASHBOARD_USERNAME=admin
       - WAHA_DASHBOARD_PASSWORD=admin
-      # Webhook configuration:
       - WHATSAPP_HOOK_URL=http://backend:8000/api/business/whatsapp/webhook
       - WHATSAPP_HOOK_EVENTS=message
       - WAHA_LOCAL_STORE_BASE_DIR=/app/.sessions
     volumes:
       - waha_sessions:/app/.sessions
+    networks:
+      - receptionist_net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend_service
+    restart: always
     ports:
-      - "3000:3000"
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - WAHA_BASE_URL=http://waha:3000
+    depends_on:
+      - waha
+    networks:
+      - receptionist_net
 
 volumes:
   waha_sessions:
+
+networks:
+  receptionist_net:
+    driver: bridge

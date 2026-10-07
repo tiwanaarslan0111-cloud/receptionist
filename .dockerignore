@@ -1,0 +1,13 @@
+.git/
+.gitignore
+frontend/
+node_modules/
+.sessions/
+waha_sessions/
+backend/venv/
+backend/.env
+backend/.pytest_cache/
+backend/__pycache__/
+backend/static/audio/*.mp3
+!backend/static/audio/.gitkeep
+.DS_Store
