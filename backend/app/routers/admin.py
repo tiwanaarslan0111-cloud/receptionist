@@ -98,12 +98,12 @@ def provision_business(
     else:
         clean_phone_id = None
 
-    # 3. Validate owner_email uniqueness
+    # 3. Validate owner_email / username uniqueness
     existing_user = db.query(User).filter(User.email.ilike(cleaned_email)).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"User email '{cleaned_email}' is already registered."
+            detail=f"Username '{cleaned_email}' is already registered. Please choose another."
         )
 
     # 4. Generate widget token and hash owner password

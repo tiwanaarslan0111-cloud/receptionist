@@ -18,7 +18,7 @@ class BusinessProvisionRequest(BaseModel):
     inbound_phone_id: Optional[str] = Field(None, max_length=64, examples=["104928372619482"])
     display_phone_number: Optional[str] = Field(None, max_length=50, examples=["+923001234567"])
     waba_id: Optional[str] = Field(None, max_length=64, examples=["1841329600331081"])
-    owner_email: str = Field(..., min_length=5, max_length=255, examples=["admin@alrazi.com"])
+    owner_email: str = Field(..., min_length=3, max_length=255, examples=["rooster_admin"])
     owner_password: str = Field(..., min_length=6, examples=["TemporaryPassword123"])
 
 class BusinessResponse(BaseModel):

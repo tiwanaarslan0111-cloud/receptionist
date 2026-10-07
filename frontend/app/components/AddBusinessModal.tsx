@@ -102,7 +102,7 @@ export default function AddBusinessModal({
 🏥 Business: ${createdResult.name}
 🌐 Tenant Slug: ${createdResult.slug}
 🔗 Login Portal: ${loginUrl}
-📧 Email: ${createdResult.owner_email}
+👤 Username: ${createdResult.owner_email}
 🔑 Temporary Password: ${ownerPassword}
 📱 WhatsApp Phone Number ID: ${createdResult.inbound_phone_id || "Pending Setup"}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -208,15 +208,15 @@ Please log in to manage your doctors, slots, and services.`;
                 </div>
 
                 <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-800">
-                  <span className="text-slate-400 font-medium">Owner Email Address</span>
+                  <span className="text-slate-400 font-medium">Account Username</span>
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-emerald-300 font-bold">{createdResult.owner_email}</span>
                     <button
-                      onClick={() => copyToClipboard(createdResult.owner_email, "email")}
+                      onClick={() => copyToClipboard(createdResult.owner_email, "username")}
                       className="p-1 hover:text-white text-slate-400 transition-colors"
-                      title="Copy Email"
+                      title="Copy Username"
                     >
-                      {copiedKey === "email" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedKey === "username" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                 </div>
@@ -459,18 +459,18 @@ Please log in to manage your doctors, slots, and services.`;
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Owner Email Address <span className="text-rose-400">*</span>
+                    Account Username <span className="text-rose-400">*</span>
                   </label>
                   <input
-                    type="email"
+                    type="text"
                     value={ownerEmail}
                     onChange={(e) => setOwnerEmail(e.target.value)}
-                    placeholder="e.g. admin@alrazi.com"
+                    placeholder="e.g. rooster or alrazi"
                     required
                     className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                   />
                   <span className="text-[10px] text-slate-500 mt-1 block">
-                    The business admin will use this email to log in to their scoped dashboard.
+                    The business admin will use this username to log in to their scoped dashboard.
                   </span>
                 </div>
 

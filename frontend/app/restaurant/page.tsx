@@ -27,6 +27,7 @@ import {
   ExternalLink,
   Menu,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import {
   getAuth,
@@ -44,10 +45,11 @@ import {
   RestaurantReservation,
   API_BASE,
 } from "@/lib/api";
+import WhatsAppConnectCard from "@/src/components/WhatsAppConnectCard";
 
 export default function RestaurantDashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"reservations" | "menu" | "tables" | "widget" | "security">("reservations");
+  const [activeTab, setActiveTab] = useState<"reservations" | "menu" | "tables" | "whatsapp" | "widget" | "security">("reservations");
   const [tenantName, setTenantName] = useState<string>("Restaurant");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -337,6 +339,25 @@ export default function RestaurantDashboardPage() {
           <button
             type="button"
             onClick={() => {
+              setActiveTab("whatsapp");
+              setIsMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === "whatsapp"
+                ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 shadow-sm"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <MessageSquare className="w-4 h-4" />
+              <span>WhatsApp Automation</span>
+            </div>
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
               setActiveTab("widget");
               setIsMobileMenuOpen(false);
             }}
@@ -410,11 +431,14 @@ export default function RestaurantDashboardPage() {
               {activeTab === "reservations" && "Table Reservations Feed"}
               {activeTab === "menu" && "Restaurant Menu Catalog"}
               {activeTab === "tables" && "Dining Table Configuration"}
+              {activeTab === "whatsapp" && "WhatsApp Automation & QR Setup"}
               {activeTab === "widget" && "AI Receptionist Web Widget"}
               {activeTab === "security" && "Restaurant Account Security"}
             </h1>
             <p className="text-[11px] text-slate-400">
-              Manage dining reservations, food catalog, and embed settings
+              {activeTab === "whatsapp"
+                ? "Scan QR code to bind restaurant WhatsApp number for AI reservations & queries"
+                : "Manage dining reservations, food catalog, and embed settings"}
             </p>
           </div>
 
@@ -756,6 +780,13 @@ export default function RestaurantDashboardPage() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* ==================== TAB: WHATSAPP AUTOMATION ==================== */}
+          {activeTab === "whatsapp" && (
+            <div className="max-w-4xl space-y-6">
+              <WhatsAppConnectCard />
             </div>
           )}
 

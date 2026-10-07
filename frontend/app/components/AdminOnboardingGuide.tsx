@@ -192,7 +192,7 @@ Please log in to set up your doctors, schedule slots, and consultation hours. Yo
                 Paste the <strong>Phone Number ID</strong> copied from Step 1 into <em>Meta Phone Number ID</em>.
               </li>
               <li>
-                Enter the client&apos;s owner email address and click <em>Generate Random Password</em>.
+                Enter the client&apos;s account username and click <em>Generate Random Password</em>.
               </li>
               <li>
                 Click <strong>Create Business &amp; Credentials</strong> to atomically provision the workspace.
