@@ -1,0 +1,109 @@
+# ==============================================================================
+# Operating System & Filesystem
+# ==============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==============================================================================
+# IDEs & Text Editors
+# ==============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ==============================================================================
+# Secrets & Environment Configurations
+# ==============================================================================
+.env
+.env.*
+*.env
+!.env.example
+!**/.env.example
+frontend/.env*.local
+
+# ==============================================================================
+# Python & Backend
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+backend/venv/
+
+# Pytest & Test coverage
+.pytest_cache/
+backend/.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Generated Runtime Audio Files (TTS cache)
+backend/static/audio/*.mp3
+!backend/static/audio/.gitkeep
+
+# ==============================================================================
+# Node.js & Frontend (Next.js)
+# ==============================================================================
+node_modules/
+frontend/node_modules/
+.pnp
+.pnp.js
+
+# Next.js Build Outputs & Static Exports
+.next/
+frontend/.next/
+out/
+frontend/out/
+
+# TypeScript build info
+*.tsbuildinfo
+frontend/next-env.d.ts
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==============================================================================
+# Containers & Session Storage
+# ==============================================================================
+.sessions/
+waha_sessions/

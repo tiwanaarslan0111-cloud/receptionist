@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Al-Shifa Family Healthcare Clinic - Medical Care & Consultations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0284c7;
+      --primary-dark: #0369a1;
+      --accent: #10b981;
+      --dark: #0f172a;
+      --slate: #334155;
+      --light: #f8fafc;
+      --white: #ffffff;
+      --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      color: var(--slate);
+      background-color: #fdfefe;
+      line-height: 1.6;
+    }
+
+    /* Top Developer Helper Banner */
+    .dev-notice-banner {
+      background: linear-gradient(90deg, #1e1b4b, #312e81);
+      color: #e0e7ff;
+      padding: 12px 20px;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    .dev-badge {
+      background: #4f46e5;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .dev-token-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #38bdf8;
+    }
+
+    /* Header & Navigation */
+    header {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--dark);
+      font-weight: 800;
+      font-size: 20px;
+    }
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), #38bdf8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 20px;
+    }
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      list-style: none;
+    }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--slate);
+      font-weight: 600;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover {
+      color: var(--primary);
+    }
+    .btn-header {
+      background: var(--primary);
+      color: white;
+      text-decoration: none;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .btn-header:hover {
+      background: var(--primary-dark);
+    }
+
+    /* Hero Section */
+    .hero {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 80px 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      gap: 60px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: 46px;
+      font-weight: 800;
+      color: var(--dark);
+      line-height: 1.2;
+      margin-bottom: 20px;
+      letter-spacing: -0.5px;
+    }
+    .hero h1 span {
+      color: var(--primary);
+    }
+    .hero p {
+      font-size: 17px;
+      color: #64748b;
+      margin-bottom: 32px;
+      line-height: 1.7;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      padding: 13px 26px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 15px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 10px 20px -5px rgba(2, 132, 199, 0.4);
+      transition: all 0.2s;
+    }
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+    .btn-secondary {
+      background: white;
+      color: var(--dark);
+      padding: 13px 24px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      text-decoration: none;
+      border: 1px solid var(--border);
+    }
+    .hero-visual {
+      background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 100%);
+      border-radius: 24px;
+      padding: 40px;
+      position: relative;
+      border: 1px solid #bae6fd;
+    }
+    .stats-card {
+      background: white;
+      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.08);
+      margin-bottom: 16px;
+    }
+    .stats-num {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .stats-label {
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    /* Medical Services */
+    .services {
+      background: #f8fafc;
+      padding: 80px 24px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .services-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .section-title {
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto 50px auto;
+    }
+    .section-title h2 {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--dark);
+      margin-bottom: 12px;
+    }
+    .section-title p {
+      color: #64748b;
+      font-size: 15px;
+    }
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+    }
+    .service-card {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      transition: all 0.25s;
+    }
+    .service-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px -5px rgba(0, 0, 0, 0.06);
+      border-color: #7dd3fc;
+    }
+    .service-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: #e0f2fe;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .service-card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 8px;
+    }
+    .service-card p {
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.6;
+    }
+
+    /* Footer */
+    footer {
+      background: var(--dark);
+      color: #94a3b8;
+      padding: 60px 24px 30px 24px;
+    }
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 40px;
+      padding-bottom: 40px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .footer-brand h4 {
+      color: white;
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+    .footer-col h5 {
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .footer-col ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .footer-copy {
+      max-width: 1200px;
+      margin: 30px auto 0 auto;
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    @media (max-width: 768px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding: 50px 20px;
+        gap: 40px;
+      }
+      .footer-inner {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Dev Helper Banner -->
+  <div class="dev-notice-banner">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span class="dev-badge">Developer Note</span>
+      <span>To embed: replace <code>YOUR_CLINIC_WIDGET_TOKEN</code> with your real business token from Phase 1.</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span>Active Token:</span>
+      <span class="dev-token-code" id="active-token-display">8c48f10c8a3d8f78734d678e36d8f15e</span>
+      <button onclick="promptNewToken()" style="background: rgba(255,255,255,0.15); border: none; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">
+        Switch Token
+      </button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <a href="#" class="logo">
+        <div class="logo-icon">+</div>
+        <span>Al-Shifa Family Healthcare</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#services">Services</a></li>
+        <li><a href="#doctors">Physicians</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#contact">Emergency Care</a></li>
+      </ul>
+      <a href="#book" class="btn-header" onclick="triggerWidget()">Book Online</a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span>★</span> 24/7 Digital Patient Care & Telehealth
+      </div>
+      <h1>Compassionate Care for <span>Every Family Member</span></h1>
+      <p>
+        Leading specialists in Cardiology, Pediatrics, Internal Medicine, and General Health.
+        Speak with our bilingual AI receptionist to find doctors, verify open slots, and confirm appointments instantly in Urdu or English.
+      </p>
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="triggerWidget()">
+          <span>Chat With Receptionist</span>
+          <span>→</span>
+        </button>
+        <a href="#services" class="btn-secondary">Explore Specialties</a>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="stats-card">
+        <div class="stats-num">15,000+</div>
+        <div class="stats-label">Patients Treated Safely Across Pakistan</div>
+      </div>
+      <div class="stats-card">
+        <div class="stats-num">&lt; 30s</div>
+        <div class="stats-label">Instant AI Appointment Confirmation Time</div>
+      </div>
+      <div class="stats-card" style="margin-bottom: 0;">
+        <div class="stats-num">100%</div>
+        <div class="stats-label">Bilingual Urdu (اردو) & English Support</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Services -->
+  <section class="services" id="services">
+    <div class="services-inner">
+      <div class="section-title">
+        <h2>Our Medical Specialties</h2>
+        <p>Expert consultants and cutting-edge facilities tailored to your family's health.</p>
+      </div>
+
+      <div class="services-grid">
+        <div class="service-card">
+          <div class="service-icon">🫀</div>
+          <h3>Cardiology & Heart Care</h3>
+          <p>Comprehensive heart health diagnostics, ECG monitoring, hypertension management, and chest pain treatment.</p>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon">👶</div>
+          <h3>Pediatric Medicine</h3>
+          <p>Compassionate care for infants, children, and adolescents, including routine checkups and vaccination schedules.</p>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon">🩺</div>
+          <h3>General Physician</h3>
+          <p>Accurate treatment for seasonal flu, fever, chronic illnesses, diabetes monitoring, and routine wellness checks.</p>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon">🦷</div>
+          <h3>Dental Care</h3>
+          <p>Advanced cosmetic, preventive, and surgical dentistry delivered in a calm and painless environment.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <h4>Al-Shifa Family Healthcare Clinic</h4>
+        <p style="font-size: 13px; line-height: 1.6;">
+          Dedicated to providing world-class, accessible healthcare powered by modern AI receptionists.
+        </p>
+      </div>
+      <div class="footer-col">
+        <h5>Quick Links</h5>
+        <ul>
+          <li>Cardiology Department</li>
+          <li>Pediatric Consultation</li>
+          <li>Diagnostic Laboratory</li>
+          <li>Emergency Desk</li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Operating Hours</h5>
+        <ul>
+          <li>Monday – Saturday: 09:00 – 21:00</li>
+          <li>Sunday: 10:00 – 16:00</li>
+          <li>Emergency Service: 24/7</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-copy">
+      © 2026 Al-Shifa Family Healthcare. Built with Multi-Tenant AI Booking Receptionist Platform.
+    </div>
+  </footer>
+
+  <!-- Helper Scripts for Testing -->
+  <script>
+    function triggerWidget() {
+      const root = document.getElementById('ai-receptionist-root');
+      if (root && root.shadowRoot) {
+        const fab = root.shadowRoot.getElementById('ai-fab');
+        if (fab) fab.click();
+      }
+    }
+
+    function promptNewToken() {
+      const current = localStorage.getItem('test_harness_widget_token') || '8c48f10c8a3d8f78734d678e36d8f15e';
+      const token = prompt('Enter your business widget_token from Phase 1:', current);
+      if (token && token.trim()) {
+        localStorage.setItem('test_harness_widget_token', token.trim());
+        location.reload();
+      }
+    }
+
+    // Read stored token if available
+    const savedToken = localStorage.getItem('test_harness_widget_token') || '8c48f10c8a3d8f78734d678e36d8f15e';
+    const displayEl = document.getElementById('active-token-display');
+    if (displayEl) displayEl.innerText = savedToken;
+  </script>
+
+  <!-- ========================================================================= -->
+  <!-- Phase 6 Embeddable Widget Script Tag                                      -->
+  <!-- In production, paste this script tag into your website's <head> or <body>:-->
+  <!-- <script src="/static/widget.js" data-token="YOUR_CLINIC_WIDGET_TOKEN" defer></script> -->
+  <!-- ========================================================================= -->
+  <script id="receptionist-widget-script" src="/static/widget.js" data-token="8c48f10c8a3d8f78734d678e36d8f15e" defer></script>
+
+  <!-- Sync custom token if switched via the test harness button -->
+  <script>
+    if (savedToken && savedToken !== '8c48f10c8a3d8f78734d678e36d8f15e') {
+      const scriptTag = document.getElementById('receptionist-widget-script');
+      if (scriptTag) scriptTag.setAttribute('data-token', savedToken);
+    }
+  </script>
+
+</body>
+</html>
