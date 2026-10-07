@@ -9,19 +9,15 @@ import {
   EyeOff,
   AlertCircle,
   Building2,
-  Stethoscope,
-  UtensilsCrossed,
   Shield,
   Sparkles,
-  ArrowRight,
-  CheckCircle2,
 } from "lucide-react";
 import { loginBusiness, setAuth } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
   const [activeRole, setActiveRole] = useState<"business" | "admin">("business");
-  const [username, setUsername] = useState<string>("phase2clinic");
+  const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
@@ -30,13 +26,8 @@ export default function LoginPage() {
   const handleRoleChange = (role: "business" | "admin") => {
     setActiveRole(role);
     setError(null);
-    if (role === "admin") {
-      setUsername("admin");
-      setPassword("");
-    } else {
-      setUsername("phase2clinic");
-      setPassword("");
-    }
+    setUsername("");
+    setPassword("");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -72,13 +63,6 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const quickFill = (user: string, pass: string, role: "business" | "admin") => {
-    setActiveRole(role);
-    setUsername(user);
-    setPassword(pass);
-    setError(null);
   };
 
   return (
@@ -147,7 +131,7 @@ export default function LoginPage() {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder={activeRole === "admin" ? "admin" : "e.g. phase2clinic"}
+                  placeholder={activeRole === "admin" ? "Enter admin username" : "Enter username or email"}
                   required
                   autoComplete="username"
                   className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
@@ -205,31 +189,6 @@ export default function LoginPage() {
               </button>
             </div>
           </form>
-
-          {/* Quick Test Demo Helpers */}
-          <div className="mt-6 pt-5 border-t border-slate-800">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center">
-              Quick Test Credentials
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => quickFill("phase2clinic", "clinicpassword123", "business")}
-                className="px-2.5 py-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-xs text-emerald-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Stethoscope className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Phase 2 Clinic</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => quickFill("admin", "Arslan123", "admin")}
-                className="px-2.5 py-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-xs text-teal-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Shield className="w-3.5 h-3.5 text-teal-400" />
-                <span>Super Admin</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Back Link */}
