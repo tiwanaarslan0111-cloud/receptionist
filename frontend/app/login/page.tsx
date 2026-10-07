@@ -168,7 +168,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={
                     activeRole === "admin"
-                      ? "Enter admin password (e.g. admin or admin123)"
+                      ? "Enter admin password"
                       : "Enter your secure password"
                   }
                   required
@@ -222,7 +222,7 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => quickFill("admin", "admin", "admin")}
+                onClick={() => quickFill("admin", "Arslan123", "admin")}
                 className="px-2.5 py-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-xs text-teal-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Shield className="w-3.5 h-3.5 text-teal-400" />

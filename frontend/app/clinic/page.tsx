@@ -1599,7 +1599,7 @@ export default function ClinicDashboardPage() {
                   className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700 flex items-center justify-center gap-2"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Launch Test Harness in New Tab</span>
+                  <span>Preview Live Web Widget</span>
                 </a>
               </div>
             </div>

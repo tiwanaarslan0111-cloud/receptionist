@@ -60,7 +60,7 @@ import {
 export default function AdminPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"businesses" | "leads" | "create" | "overview">("businesses");
-  const [adminSecret, setAdminSecret] = useState<string>("admin_master_secret_key_change_me");
+  const [adminSecret, setAdminSecret] = useState<string>("Arslan123");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
@@ -108,7 +108,7 @@ export default function AdminPage() {
       router.push("/login");
       return;
     }
-    const secret = auth.admin_secret || localStorage.getItem("admin_secret_key") || "admin_master_secret_key_change_me";
+    const secret = auth.admin_secret || localStorage.getItem("admin_secret_key") || "Arslan123";
     setAdminSecret(secret);
     loadAllAdminData(secret);
   }, []);
@@ -1292,7 +1292,7 @@ Please log in to manage your doctors, slots, and services.`;
                   className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700 flex items-center justify-center gap-2"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Open Live Widget Test Harness</span>
+                  <span>Preview Live Web Widget</span>
                 </a>
               </div>
             </div>

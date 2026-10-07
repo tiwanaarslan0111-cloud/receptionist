@@ -38,7 +38,7 @@ import {
 
 export default function AdminBusinessesPage() {
   const router = useRouter();
-  const [adminSecret, setAdminSecret] = useState<string>("admin_master_secret_key_change_me");
+  const [adminSecret, setAdminSecret] = useState<string>("Arslan123");
   const [businesses, setBusinesses] = useState<BusinessResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export default function AdminBusinessesPage() {
       router.push("/login");
       return;
     }
-    const secret = auth.admin_secret || localStorage.getItem("admin_secret_key") || "admin_master_secret_key_change_me";
+    const secret = auth.admin_secret || localStorage.getItem("admin_secret_key") || "Arslan123";
     setAdminSecret(secret);
     loadBusinesses(secret);
   }, []);

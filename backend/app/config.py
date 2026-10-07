@@ -3,7 +3,7 @@ from typing import Optional, Union
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/receptionist_db"
-    ADMIN_SECRET_KEY: str = "admin_master_secret_key_change_me"
+    ADMIN_SECRET_KEY: str = "Arslan123"
     JWT_SECRET: str = "super_secret_jwt_key_for_client_dashboards_12345"
     PUBLIC_BASE_URL: str = "https://receptionist.helpexai.com"
     

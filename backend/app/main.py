@@ -16,10 +16,27 @@ async def lifespan(app: FastAPI):
     try:
         with engine.connect() as conn:
             conn.execute(text("""
+                CREATE EXTENSION IF NOT EXISTS pgcrypto;
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name = 'users' AND column_name = 'id' AND data_type = 'integer'
+                    ) THEN
+                        ALTER TABLE users ALTER COLUMN id DROP DEFAULT;
+                        ALTER TABLE users ALTER COLUMN id TYPE UUID USING gen_random_uuid();
+                        ALTER TABLE users ALTER COLUMN id SET DEFAULT gen_random_uuid();
+                    END IF;
+                END $$;
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS hashed_password TEXT;
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'business_admin';
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS business_id UUID;
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+                ALTER TABLE users ALTER COLUMN email_verified_at DROP NOT NULL;
+                ALTER TABLE users ALTER COLUMN verified_at DROP NOT NULL;
+                ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
+                ALTER TABLE users ALTER COLUMN remember_token DROP NOT NULL;
+                ALTER TABLE users ALTER COLUMN username DROP NOT NULL;
             """))
             conn.commit()
     except Exception:
