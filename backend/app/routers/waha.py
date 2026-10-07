@@ -97,44 +97,53 @@ async def process_waha_message_task(session_name: str, sender_chat_id: str, user
     try:
         print(f"\n[WAHA AI Worker] Incoming message from {sender_chat_id} (Session: {session_name}): {user_text}")
 
-        # 1. Resolve business ID (handles 'clinic_<uuid>', 'clinic_X' or fallback 'default')
+        # 1. Resolve business ID (handles 'clinic_<uuid>', 'clinic_<slug>', or fallback)
         business = None
         if session_name.startswith("clinic_"):
-            raw_id = session_name.replace("clinic_", "")
+            raw_id = session_name.replace("clinic_", "").strip()
             # Try UUID first
             try:
                 biz_uuid = UUID(raw_id)
                 business = db.query(Business).filter(Business.id == biz_uuid).first()
-            except Exception:
+            except (ValueError, AttributeError):
                 pass
-
-            # Try integer ID next
-            if not business:
-                try:
-                    business = db.query(Business).filter(Business.id == int(raw_id)).first()
-                except Exception:
-                    pass
+            except Exception:
+                db.rollback()
 
             # Try slug next
             if not business:
-                business = db.query(Business).filter(Business.slug == raw_id).first()
+                try:
+                    business = db.query(Business).filter(Business.slug == raw_id).first()
+                except Exception:
+                    db.rollback()
 
         # If not resolved by session prefix, check configured fallback DEFAULT_BUSINESS_ID
         if not business:
-            default_id = getattr(settings, "DEFAULT_BUSINESS_ID", 1)
-            try:
-                business = db.query(Business).filter(Business.id == UUID(str(default_id))).first()
-            except Exception:
+            default_id = getattr(settings, "DEFAULT_BUSINESS_ID", None)
+            if default_id:
+                raw_default = str(default_id).strip()
                 try:
-                    business = db.query(Business).filter(Business.id == int(default_id)).first()
+                    biz_uuid = UUID(raw_default)
+                    business = db.query(Business).filter(Business.id == biz_uuid).first()
+                except (ValueError, AttributeError):
+                    pass
                 except Exception:
-                    business = db.query(Business).filter(Business.slug == str(default_id)).first()
+                    db.rollback()
+
+                if not business:
+                    try:
+                        business = db.query(Business).filter(Business.slug == raw_default).first()
+                    except Exception:
+                        db.rollback()
 
         # Final fallback to first clinic or first business in DB for testing
         if not business:
-            business = db.query(Business).filter(Business.business_type == "clinic").first()
-            if not business:
-                business = db.query(Business).first()
+            try:
+                business = db.query(Business).filter(Business.business_type == "clinic").first()
+                if not business:
+                    business = db.query(Business).first()
+            except Exception:
+                db.rollback()
 
         if not business:
             print(f"[WAHA Worker Error] No business found in database for session {session_name}")
