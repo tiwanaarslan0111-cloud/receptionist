@@ -4,7 +4,7 @@ services:
     container_name: waha_service
     restart: always
     ports:
-      - "3000:3000"
+      - "3008:3000"
     environment:
       - WHATSAPP_DEFAULT_ENGINE=NOWEB
       - WAHA_NOWEB_WA_VERSION=auto-web
@@ -37,6 +37,21 @@ services:
       - WAHA_BASE_URL=http://waha:3000
     depends_on:
       - waha
+    networks:
+      - receptionist_net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://80.225.243.232:8000}
+    container_name: frontend_service
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
     networks:
       - receptionist_net
 

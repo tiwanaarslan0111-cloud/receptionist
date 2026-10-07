@@ -1286,7 +1286,7 @@ Please log in to manage your doctors, slots, and services.`;
               {/* Live Test Link */}
               <div className="pt-2">
                 <a
-                  href={`http://127.0.0.1:8000/static/test_widget.html`}
+                  href={`${API_BASE}/static/test_widget.html`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700 flex items-center justify-center gap-2"

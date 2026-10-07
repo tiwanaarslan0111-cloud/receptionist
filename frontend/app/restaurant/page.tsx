@@ -42,6 +42,7 @@ import {
   MenuItem,
   RestaurantTable,
   RestaurantReservation,
+  API_BASE,
 } from "@/lib/api";
 
 export default function RestaurantDashboardPage() {
@@ -827,7 +828,7 @@ export default function RestaurantDashboardPage() {
                   <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs text-cyan-300 break-all flex items-center justify-between gap-3">
                     <span>
                       {restaurantProfile?.widget_token
-                        ? `<script src="http://127.0.0.1:8000/static/widget.js" data-token="${restaurantProfile.widget_token}" defer></script>`
+                        ? `<script src="${API_BASE}/static/widget.js" data-token="${restaurantProfile.widget_token}" defer></script>`
                         : "Loading snippet..."}
                     </span>
                     <button
@@ -835,7 +836,7 @@ export default function RestaurantDashboardPage() {
                       onClick={() => {
                         if (restaurantProfile?.widget_token) {
                           navigator.clipboard.writeText(
-                            `<script src="http://127.0.0.1:8000/static/widget.js" data-token="${restaurantProfile.widget_token}" defer></script>`
+                            `<script src="${API_BASE}/static/widget.js" data-token="${restaurantProfile.widget_token}" defer></script>`
                           );
                           setCopiedSnippet(true);
                           setTimeout(() => setCopiedSnippet(false), 2000);
@@ -851,7 +852,7 @@ export default function RestaurantDashboardPage() {
                 {/* Test Harness Link */}
                 <div className="pt-2">
                   <a
-                    href="http://127.0.0.1:8000/static/test_widget.html"
+                    href={`${API_BASE}/static/test_widget.html`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700 flex items-center justify-center gap-2"
