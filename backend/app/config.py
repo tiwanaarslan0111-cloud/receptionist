@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/receptionist_db"
     ADMIN_SECRET_KEY: str = "admin_master_secret_key_change_me"
     JWT_SECRET: str = "super_secret_jwt_key_for_client_dashboards_12345"
+    PUBLIC_BASE_URL: str = "https://receptionist.helpexai.com"
     
     # LLM Provider Configuration
     LLM_PROVIDER: str = "groq"  # options: "groq" or "openai"

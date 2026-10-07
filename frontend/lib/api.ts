@@ -1,21 +1,23 @@
 export function getApiBase(): string {
   if (typeof window !== "undefined" && window.location.hostname) {
     const host = window.location.hostname;
-    const envUrl = process.env.NEXT_PUBLIC_API_URL;
+    const proto = window.location.protocol;
+    // When running in browser on production domain or any reverse-proxied host
     if (host !== "localhost" && host !== "127.0.0.1") {
-      if (!envUrl || envUrl.includes("127.0.0.1") || envUrl.includes("localhost")) {
-        const proto = window.location.protocol;
-        return `${proto}//${host}:8000`;
+      const envUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (envUrl && !envUrl.includes("127.0.0.1") && !envUrl.includes("localhost")) {
+        return envUrl.replace(/\/+$/, "");
       }
+      return `${proto}//${host}`;
     }
   }
-  return process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+  return process.env.NEXT_PUBLIC_API_URL || "https://receptionist.helpexai.com";
 }
 
 export const API_BASE =
   typeof window !== "undefined"
     ? getApiBase()
-    : (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000");
+    : (process.env.NEXT_PUBLIC_API_URL || "https://receptionist.helpexai.com");
 
 export class ApiError extends Error {
   status: number;

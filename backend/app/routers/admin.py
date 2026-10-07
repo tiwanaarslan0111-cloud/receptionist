@@ -25,6 +25,10 @@ def verify_admin(x_admin_secret: str = Header(..., description="Master admin pas
         )
     return x_admin_secret
 
+def get_embed_snippet(widget_token: str) -> str:
+    base = (getattr(settings, "PUBLIC_BASE_URL", "https://receptionist.helpexai.com") or "https://receptionist.helpexai.com").rstrip("/")
+    return f'<script src="{base}/static/widget.js" data-token="{widget_token}" defer></script>'
+
 @router.get(
     "/businesses",
     response_model=List[BusinessResponse],
@@ -54,7 +58,7 @@ def list_businesses(
                 widget_token=b.widget_token,
                 is_widget_enabled=getattr(b, "is_widget_enabled", True),
                 created_at=b.created_at,
-                embed_snippet=f'<script src="http://127.0.0.1:8000/static/widget.js" data-token="{b.widget_token}" defer></script>',
+                embed_snippet=get_embed_snippet(b.widget_token),
                 owner_email=owner_email
             )
         )
@@ -152,7 +156,7 @@ def provision_business(
         widget_token=new_business.widget_token,
         is_widget_enabled=new_business.is_widget_enabled,
         created_at=new_business.created_at,
-        embed_snippet=f'<script src="http://127.0.0.1:8000/static/widget.js" data-token="{new_business.widget_token}" defer></script>',
+        embed_snippet=get_embed_snippet(new_business.widget_token),
         owner_email=new_user.email,
         owner_role=new_user.role,
         owner_user_id=new_user.id
@@ -202,7 +206,7 @@ def create_business(
         widget_token=new_business.widget_token,
         is_widget_enabled=new_business.is_widget_enabled,
         created_at=new_business.created_at,
-        embed_snippet=f'<script src="http://127.0.0.1:8000/static/widget.js" data-token="{new_business.widget_token}" defer></script>'
+        embed_snippet=get_embed_snippet(new_business.widget_token)
     )
 
 @router.patch(
@@ -231,7 +235,7 @@ def toggle_business_widget(
         widget_token=business.widget_token,
         is_widget_enabled=business.is_widget_enabled,
         created_at=business.created_at,
-        embed_snippet=f'<script src="http://127.0.0.1:8000/static/widget.js" data-token="{business.widget_token}" defer></script>'
+        embed_snippet=get_embed_snippet(business.widget_token)
     )
 
 @router.delete(

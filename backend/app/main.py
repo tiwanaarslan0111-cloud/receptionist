@@ -46,6 +46,7 @@ static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
 audio_dir = os.path.join(static_dir, "audio")
 os.makedirs(audio_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.mount("/api/static", StaticFiles(directory=static_dir), name="api_static")
 
 # Include Routers
 app.include_router(admin.router)
@@ -58,5 +59,6 @@ app.include_router(whatsapp.router)
 app.include_router(waha.router)
 
 @app.get("/health", tags=["Health"])
+@app.get("/api/health", tags=["Health"])
 def health_check():
     return {"status": "healthy", "service": "receptionist-backend"}

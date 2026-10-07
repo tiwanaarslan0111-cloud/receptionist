@@ -48,9 +48,21 @@ export default function HomePage() {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE}/health`)
-      .then((res) => setApiOnline(res.ok))
-      .catch(() => setApiOnline(false));
+    fetch(`${API_BASE}/api/health`)
+      .then((res) => {
+        if (res.ok) {
+          setApiOnline(true);
+        } else {
+          fetch(`${API_BASE}/health`)
+            .then((r) => setApiOnline(r.ok))
+            .catch(() => setApiOnline(false));
+        }
+      })
+      .catch(() => {
+        fetch(`${API_BASE}/health`)
+          .then((res) => setApiOnline(res.ok))
+          .catch(() => setApiOnline(false));
+      });
   }, []);
 
   const handleDemoSubmit = async (e: React.FormEvent) => {
