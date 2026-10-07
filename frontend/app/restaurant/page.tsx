@@ -28,7 +28,14 @@ import {
   Menu,
   Sparkles,
   MessageSquare,
+  ChefHat,
+  Truck,
+  PackageCheck,
+  XCircle,
+  Flame,
+  MapPin,
 } from "lucide-react";
+import ThemeToggle from "../components/ThemeToggle";
 import {
   getAuth,
   clearAuth,
@@ -38,18 +45,21 @@ import {
   getRestaurantTables,
   createRestaurantTable,
   getRestaurantReservations,
+  getRestaurantOrders,
+  updateRestaurantOrderStatus,
   getProfile,
   changePassword,
   MenuItem,
   RestaurantTable,
   RestaurantReservation,
+  RestaurantOrder,
   API_BASE,
 } from "@/lib/api";
 import WhatsAppConnectCard from "@/src/components/WhatsAppConnectCard";
 
 export default function RestaurantDashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"reservations" | "menu" | "tables" | "whatsapp" | "widget" | "security">("reservations");
+  const [activeTab, setActiveTab] = useState<"orders" | "reservations" | "menu" | "tables" | "whatsapp" | "widget" | "security">("orders");
   const [tenantName, setTenantName] = useState<string>("Restaurant");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -70,6 +80,11 @@ export default function RestaurantDashboardPage() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [reservations, setReservations] = useState<RestaurantReservation[]>([]);
+  const [orders, setOrders] = useState<RestaurantOrder[]>([]);
+  const [orderSearch, setOrderSearch] = useState("");
+  const [orderFilter, setOrderFilter] = useState<"all" | "active" | "received" | "in_kitchen" | "ready" | "completed">("active");
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [statusToast, setStatusToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
   // Loading & Error States
   const [loading, setLoading] = useState<boolean>(true);
@@ -110,19 +125,34 @@ export default function RestaurantDashboardPage() {
     loadAllData();
   }, []);
 
+  // Real-time polling for incoming orders (every 10s)
+  useEffect(() => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const freshOrders = await getRestaurantOrders();
+        setOrders(freshOrders);
+      } catch (e) {
+        // quiet background poll
+      }
+    }, 10000);
+    return () => clearInterval(pollInterval);
+  }, []);
+
   const loadAllData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [menuData, tablesData, resData, profData] = await Promise.all([
+      const [menuData, tablesData, resData, ordersData, profData] = await Promise.all([
         getRestaurantMenu(),
         getRestaurantTables(),
         getRestaurantReservations(),
+        getRestaurantOrders().catch(() => []),
         getProfile().catch(() => null),
       ]);
       setMenuItems(menuData);
       setTables(tablesData);
       setReservations(resData);
+      setOrders(ordersData);
       if (profData) {
         setRestaurantProfile(profData);
         if (profData.name) setTenantName(profData.name);
@@ -132,6 +162,39 @@ export default function RestaurantDashboardPage() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (
+    orderId: string,
+    newStatus: "received" | "in_kitchen" | "ready" | "completed" | "cancelled"
+  ) => {
+    setUpdatingOrderId(orderId);
+    setStatusToast(null);
+    try {
+      const updated = await updateRestaurantOrderStatus(orderId, newStatus);
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? updated : o)));
+
+      const statusLabels = {
+        in_kitchen: "Preparing in Kitchen",
+        ready: "Ready / Out for Delivery",
+        completed: "Delivered & Completed",
+        cancelled: "Cancelled",
+        received: "Marked Received",
+      };
+
+      setStatusToast({
+        msg: `Order #${updated.order_number} marked as "${statusLabels[newStatus]}". WhatsApp update message automatically sent to ${updated.customer_phone}!`,
+        type: "success",
+      });
+      setTimeout(() => setStatusToast(null), 7000);
+    } catch (err: any) {
+      setStatusToast({
+        msg: err.message || "Failed to update order status.",
+        type: "error",
+      });
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -273,6 +336,27 @@ export default function RestaurantDashboardPage() {
 
         {/* Sidebar Nav Items */}
         <nav className={`p-3 space-y-1.5 flex-1 ${isMobileMenuOpen ? "block" : "hidden md:block"}`}>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("orders");
+              setIsMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === "orders"
+                ? "bg-amber-500/15 text-amber-400 border border-amber-500/20 shadow-sm"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <ChefHat className="w-4 h-4 text-amber-400" />
+              <span>Kitchen Orders</span>
+            </div>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              {orders.filter((o) => o.status === "received" || o.status === "in_kitchen").length}
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={() => {
@@ -428,6 +512,7 @@ export default function RestaurantDashboardPage() {
         <header className="h-16 border-b border-emerald-500/10 glass-panel px-6 flex items-center justify-between sticky top-0 z-20">
           <div>
             <h1 className="text-base font-bold text-white capitalize">
+              {activeTab === "orders" && "Kitchen & Customer Food Orders"}
               {activeTab === "reservations" && "Table Reservations Feed"}
               {activeTab === "menu" && "Restaurant Menu Catalog"}
               {activeTab === "tables" && "Dining Table Configuration"}
@@ -436,9 +521,9 @@ export default function RestaurantDashboardPage() {
               {activeTab === "security" && "Restaurant Account Security"}
             </h1>
             <p className="text-[11px] text-slate-400">
-              {activeTab === "whatsapp"
-                ? "Scan QR code to bind restaurant WhatsApp number for AI reservations & queries"
-                : "Manage dining reservations, food catalog, and embed settings"}
+              {activeTab === "orders" && "Manage incoming WhatsApp food orders and dispatch kitchen progress notifications"}
+              {activeTab === "whatsapp" && "Scan QR code to bind restaurant WhatsApp number for AI reservations & queries"}
+              {activeTab !== "orders" && activeTab !== "whatsapp" && "Manage dining reservations, food catalog, and embed settings"}
             </p>
           </div>
 
@@ -459,6 +544,7 @@ export default function RestaurantDashboardPage() {
                 {restaurantProfile.is_widget_enabled !== false ? "AI Receptionist Active" : "Widget Disabled"}
               </span>
             )}
+            <ThemeToggle />
             <button
               onClick={handleRefresh}
               disabled={refreshing}
@@ -478,6 +564,369 @@ export default function RestaurantDashboardPage() {
         )}
 
         <div className="p-6 max-w-7xl w-full">
+          {/* ==================== TAB 0: KITCHEN ORDERS ==================== */}
+          {activeTab === "orders" && (
+            <div className="space-y-6">
+              {/* Status Toast Banner */}
+              {statusToast && (
+                <div
+                  className={`p-4 rounded-xl border flex items-center justify-between gap-3 animate-in fade-in ${
+                    statusToast.type === "success"
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                      : "bg-rose-500/10 border-rose-500/20 text-rose-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 text-xs font-semibold">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>{statusToast.msg}</span>
+                  </div>
+                  <button
+                    onClick={() => setStatusToast(null)}
+                    className="text-slate-400 hover:text-white text-xs cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {/* Kitchen Overview Stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-4 rounded-xl glass-panel border border-slate-800">
+                  <span className="text-[11px] font-semibold text-slate-400 block mb-1">
+                    Kitchen Queue
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-5 h-5 text-amber-400" />
+                    <span className="text-xl font-bold text-white font-mono">
+                      {orders.filter((o) => o.status === "received" || o.status === "in_kitchen").length}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl glass-panel border border-slate-800">
+                  <span className="text-[11px] font-semibold text-slate-400 block mb-1">
+                    New Orders
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <ChefHat className="w-5 h-5 text-yellow-400" />
+                    <span className="text-xl font-bold text-yellow-300 font-mono">
+                      {orders.filter((o) => o.status === "received").length}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl glass-panel border border-slate-800">
+                  <span className="text-[11px] font-semibold text-slate-400 block mb-1">
+                    Ready for Rider / Pickup
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Truck className="w-5 h-5 text-purple-400" />
+                    <span className="text-xl font-bold text-purple-300 font-mono">
+                      {orders.filter((o) => o.status === "ready").length}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl glass-panel border border-slate-800">
+                  <span className="text-[11px] font-semibold text-slate-400 block mb-1">
+                    Completed
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <PackageCheck className="w-5 h-5 text-emerald-400" />
+                    <span className="text-xl font-bold text-emerald-300 font-mono">
+                      {orders.filter((o) => o.status === "completed").length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Search & Filter Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                  {[
+                    { id: "active", label: "Active Queue", count: orders.filter((o) => o.status === "received" || o.status === "in_kitchen").length },
+                    { id: "all", label: "All Orders", count: orders.length },
+                    { id: "received", label: "New (Received)", count: orders.filter((o) => o.status === "received").length },
+                    { id: "in_kitchen", label: "Cooking", count: orders.filter((o) => o.status === "in_kitchen").length },
+                    { id: "ready", label: "Ready", count: orders.filter((o) => o.status === "ready").length },
+                    { id: "completed", label: "Completed", count: orders.filter((o) => o.status === "completed").length },
+                  ].map((pill) => (
+                    <button
+                      key={pill.id}
+                      type="button"
+                      onClick={() => setOrderFilter(pill.id as any)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                        orderFilter === pill.id
+                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                          : "bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800"
+                      }`}
+                    >
+                      <span>{pill.label}</span>
+                      <span className="px-1.5 py-0.2 rounded-md text-[10px] font-mono bg-slate-800 text-slate-300">
+                        {pill.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={orderSearch}
+                    onChange={(e) => setOrderSearch(e.target.value)}
+                    placeholder="Search by order #, phone, guest..."
+                    className="w-full pl-9 pr-3.5 py-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                  />
+                </div>
+              </div>
+
+              {/* Orders List / Cards */}
+              {loading ? (
+                <div className="p-12 text-center text-slate-400 text-xs">Loading kitchen orders...</div>
+              ) : orders.filter((o) => {
+                  if (orderFilter === "active" && o.status !== "received" && o.status !== "in_kitchen") return false;
+                  if (orderFilter !== "all" && orderFilter !== "active" && o.status !== orderFilter) return false;
+                  if (!orderSearch.trim()) return true;
+                  const q = orderSearch.toLowerCase();
+                  return (
+                    o.order_number.toLowerCase().includes(q) ||
+                    o.customer_name.toLowerCase().includes(q) ||
+                    o.customer_phone.includes(q) ||
+                    (o.delivery_address && o.delivery_address.toLowerCase().includes(q))
+                  );
+                }).length === 0 ? (
+                <div className="glass-panel p-12 rounded-2xl border border-slate-800 text-center space-y-3">
+                  <ChefHat className="w-8 h-8 text-slate-500 mx-auto" />
+                  <p className="text-sm font-semibold text-slate-300">No orders found in this view</p>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    When customers ask for the menu and confirm their dishes on WhatsApp, their orders will appear here automatically in real time!
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {orders
+                    .filter((o) => {
+                      if (orderFilter === "active" && o.status !== "received" && o.status !== "in_kitchen") return false;
+                      if (orderFilter !== "all" && orderFilter !== "active" && o.status !== orderFilter) return false;
+                      if (!orderSearch.trim()) return true;
+                      const q = orderSearch.toLowerCase();
+                      return (
+                        o.order_number.toLowerCase().includes(q) ||
+                        o.customer_name.toLowerCase().includes(q) ||
+                        o.customer_phone.includes(q) ||
+                        (o.delivery_address && o.delivery_address.toLowerCase().includes(q))
+                      );
+                    })
+                    .map((order) => {
+                      const isUpdating = updatingOrderId === order.id;
+                      const items = Array.isArray(order.items) ? order.items : [];
+
+                      return (
+                        <div
+                          key={order.id}
+                          className="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-slate-700/80 transition-all flex flex-col justify-between space-y-4 shadow-lg relative overflow-hidden"
+                        >
+                          {/* Status bar & Order Header */}
+                          <div>
+                            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-800/80">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-xs font-bold text-amber-400 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                  #{order.order_number}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                                </span>
+                              </div>
+
+                              {/* Status badge */}
+                              <div className="flex items-center gap-1.5">
+                                {order.status === "received" && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                                    New Order
+                                  </span>
+                                )}
+                                {order.status === "in_kitchen" && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                                    <Flame className="w-3 h-3 text-blue-400" />
+                                    Cooking in Kitchen
+                                  </span>
+                                )}
+                                {order.status === "ready" && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                                    <Truck className="w-3 h-3 text-purple-400" />
+                                    Ready / Out for Delivery
+                                  </span>
+                                )}
+                                {order.status === "completed" && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                    <Check className="w-3 h-3 text-emerald-400" />
+                                    Completed
+                                  </span>
+                                )}
+                                {order.status === "cancelled" && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                                    <XCircle className="w-3 h-3 text-rose-400" />
+                                    Cancelled
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Customer & Delivery Section */}
+                            <div className="pt-3 pb-2 space-y-1.5 text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-white text-sm">
+                                  {order.customer_name}
+                                </span>
+                                <a
+                                  href={`https://wa.me/${order.customer_phone.replace(/[^0-9]/g, "")}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-mono text-emerald-400 hover:text-emerald-300 flex items-center gap-1 text-[11px]"
+                                >
+                                  <Phone className="w-3 h-3" />
+                                  <span>{order.customer_phone}</span>
+                                </a>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
+                                {order.order_type === "delivery" ? (
+                                  <>
+                                    <Truck className="w-3 h-3 text-amber-400 shrink-0" />
+                                    <span className="text-slate-300 font-medium">Delivery:</span>
+                                    <span className="truncate">{order.delivery_address || "No address provided"}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ShoppingBag className="w-3 h-3 text-teal-400 shrink-0" />
+                                    <span className="text-slate-300 font-medium capitalize">{order.order_type}</span>
+                                  </>
+                                )}
+                              </div>
+
+                              {order.special_instructions && (
+                                <div className="p-2 rounded-lg bg-amber-500/5 border border-amber-500/15 text-[11px] text-amber-300/90">
+                                  <span className="font-semibold text-amber-400">Note: </span>
+                                  {order.special_instructions}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Items List */}
+                            <div className="pt-2 border-t border-slate-800/60">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                                Items Ordered ({items.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0)})
+                              </span>
+                              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                                {items.map((item, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-slate-900/60 border border-slate-800/60"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-5 h-5 rounded-md bg-amber-500/10 text-amber-400 font-bold font-mono text-[11px] flex items-center justify-center shrink-0">
+                                        {item.quantity}x
+                                      </span>
+                                      <div>
+                                        <span className="text-slate-200 font-medium">{item.name}</span>
+                                        {item.notes && (
+                                          <span className="text-[10px] text-amber-300 block">
+                                            ({item.notes})
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <span className="font-mono text-slate-300 text-[11px]">
+                                      Rs. {(item.subtotal || (Number(item.price) * Number(item.quantity)) || 0).toLocaleString()}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Bill Total & Actions */}
+                          <div className="pt-3 border-t border-slate-800/80 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-slate-400 font-medium">Total Amount:</span>
+                              <span className="text-base font-bold text-emerald-400 font-mono">
+                                Rs. {Number(order.total_amount).toLocaleString()}
+                              </span>
+                            </div>
+
+                            {/* Status Transition Buttons */}
+                            <div className="space-y-1.5">
+                              {order.status === "received" && (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={isUpdating}
+                                    onClick={() => handleUpdateOrderStatus(order.id, "in_kitchen")}
+                                    className="flex-1 py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all shadow-md shadow-amber-600/20 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                  >
+                                    <ChefHat className="w-3.5 h-3.5" />
+                                    <span>{isUpdating ? "Updating..." : "Accept & Start Cooking"}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isUpdating}
+                                    onClick={() => handleUpdateOrderStatus(order.id, "cancelled")}
+                                    className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-rose-400 border border-slate-700 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              )}
+
+                              {order.status === "in_kitchen" && (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={isUpdating}
+                                    onClick={() => handleUpdateOrderStatus(order.id, "ready")}
+                                    className="flex-1 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                  >
+                                    <Truck className="w-3.5 h-3.5" />
+                                    <span>{isUpdating ? "Updating..." : "Mark Ready & Send Rider"}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isUpdating}
+                                    onClick={() => handleUpdateOrderStatus(order.id, "cancelled")}
+                                    className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-rose-400 border border-slate-700 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              )}
+
+                              {order.status === "ready" && (
+                                <button
+                                  type="button"
+                                  disabled={isUpdating}
+                                  onClick={() => handleUpdateOrderStatus(order.id, "completed")}
+                                  className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                >
+                                  <PackageCheck className="w-3.5 h-3.5" />
+                                  <span>{isUpdating ? "Updating..." : "Mark as Delivered / Completed"}</span>
+                                </button>
+                              )}
+
+                              <span className="text-[10px] text-slate-500 block text-center">
+                                💬 Status change automatically sends a WhatsApp message to customer
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ==================== TAB 1: RESERVATIONS ==================== */}
           {activeTab === "reservations" && (
             <div className="space-y-6">

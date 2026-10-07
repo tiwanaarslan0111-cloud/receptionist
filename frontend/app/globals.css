@@ -2,9 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =========================================================
+   THEME DESIGN TOKENS (LIGHT BY DEFAULT)
+   ========================================================= */
 :root {
-  --background: #090d16;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-border: #e2e8f0;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  color-scheme: light;
+}
+
+html.dark {
+  --background: #070b14;
   --foreground: #f1f5f9;
+  --card: #0a0f1d;
+  --card-border: rgba(255, 255, 255, 0.08);
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  color-scheme: dark;
 }
 
 body {
@@ -12,46 +30,309 @@ body {
   background: var(--background);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   min-height: 100vh;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Custom scrollbar */
+/* =========================================================
+   SCROLLBAR SYSTEM
+   ========================================================= */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0b1120;
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #cbd5e1;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: #0b1120;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
   background: #334155;
 }
 
-/* Glassmorphism helpers */
+/* =========================================================
+   GLASSMORPHISM & GLOW EFFECTS
+   ========================================================= */
+/* Default Light Glass */
 .glass-panel {
-  background: rgba(15, 23, 42, 0.75);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
 }
 
 .glass-panel-subtle {
-  background: rgba(30, 41, 59, 0.45);
+  background: rgba(248, 250, 252, 0.95);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+}
+
+/* Dark Mode Glass */
+html.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+html.dark .glass-panel-subtle {
+  background: rgba(30, 41, 59, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .glow-blue {
-  box-shadow: 0 0 35px -5px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 0 35px -5px rgba(59, 130, 246, 0.15);
 }
 
 .glow-emerald {
-  box-shadow: 0 0 35px -5px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 0 35px -5px rgba(16, 185, 129, 0.15);
 }
 
 .glow-amber {
+  box-shadow: 0 0 35px -5px rgba(245, 158, 11, 0.15);
+}
+
+html.dark .glow-blue {
+  box-shadow: 0 0 35px -5px rgba(59, 130, 246, 0.25);
+}
+
+html.dark .glow-emerald {
+  box-shadow: 0 0 35px -5px rgba(16, 185, 129, 0.25);
+}
+
+html.dark .glow-amber {
   box-shadow: 0 0 35px -5px rgba(245, 158, 11, 0.25);
+}
+
+/* =========================================================
+   COMPREHENSIVE LIGHT MODE OVERRIDES (DEFAULT THEME)
+   ========================================================= */
+html:not(.dark) body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Dark container backgrounds converted to clean modern light palette */
+html:not(.dark) .bg-\[\#070b14\],
+html:not(.dark) .bg-\[\#090d16\],
+html:not(.dark) .bg-\[\#0b1120\] {
+  background-color: #f8fafc !important;
+}
+
+html:not(.dark) .bg-\[\#0a0f1d\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) .bg-slate-950,
+html:not(.dark) .bg-slate-950\/60,
+html:not(.dark) .bg-slate-950\/80 {
+  background-color: #f8fafc !important;
+}
+
+html:not(.dark) .bg-slate-900,
+html:not(.dark) .bg-slate-900\/90,
+html:not(.dark) .bg-slate-900\/80,
+html:not(.dark) .bg-slate-900\/70,
+html:not(.dark) .bg-slate-900\/60,
+html:not(.dark) .bg-slate-900\/50,
+html:not(.dark) .bg-slate-900\/40,
+html:not(.dark) .bg-slate-900\/30 {
+  background-color: #ffffff !important;
+}
+
+html:not(.dark) .bg-slate-800,
+html:not(.dark) .bg-slate-800\/90,
+html:not(.dark) .bg-slate-800\/80,
+html:not(.dark) .bg-slate-800\/70,
+html:not(.dark) .bg-slate-800\/60,
+html:not(.dark) .bg-slate-800\/50,
+html:not(.dark) .bg-slate-800\/40,
+html:not(.dark) .bg-slate-800\/30 {
+  background-color: #f1f5f9 !important;
+}
+
+html:not(.dark) .bg-slate-700,
+html:not(.dark) .bg-slate-700\/50 {
+  background-color: #e2e8f0 !important;
+}
+
+/* Border overrides */
+html:not(.dark) .border-slate-800,
+html:not(.dark) .border-slate-800\/80,
+html:not(.dark) .border-slate-800\/60,
+html:not(.dark) .border-slate-800\/50,
+html:not(.dark) .border-slate-800\/40,
+html:not(.dark) .border-slate-700,
+html:not(.dark) .border-slate-700\/80,
+html:not(.dark) .border-slate-700\/60,
+html:not(.dark) .border-slate-700\/50,
+html:not(.dark) .border-slate-700\/40,
+html:not(.dark) .border-white\/10,
+html:not(.dark) .border-white\/5,
+html:not(.dark) .border-white\/20 {
+  border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) .border-emerald-500\/10,
+html:not(.dark) .border-emerald-500\/15 {
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}
+
+/* Text Hierarchy */
+html:not(.dark) .text-slate-100,
+html:not(.dark) .text-slate-200 {
+  color: #1e293b !important;
+}
+
+html:not(.dark) .text-slate-300 {
+  color: #334155 !important;
+}
+
+html:not(.dark) .text-slate-400 {
+  color: #64748b !important;
+}
+
+html:not(.dark) .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Headings in Light Mode */
+html:not(.dark) :is(h1, h2, h3, h4, h5, h6).text-white:not(:is(button, a[class*="bg-"], [class*="bg-emerald-"], [class*="bg-teal-"], [class*="bg-rose-"], [class*="bg-amber-"]) *):not([class*="bg-emerald-"]) {
+  color: #0f172a !important;
+}
+
+/* Card titles, standalone text-white */
+html:not(.dark) span.text-white:not(:is(button, a, [class*="bg-emerald-"], [class*="bg-teal-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-indigo-"], [class*="bg-purple-"], [class*="from-"]) *),
+html:not(.dark) p.text-white:not(:is(button, a, [class*="bg-emerald-"], [class*="bg-teal-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="from-"]) *),
+html:not(.dark) label.text-white,
+html:not(.dark) th.text-white {
+  color: #0f172a !important;
+}
+
+/* Buttons and Colored Badges retain pure white text */
+html:not(.dark) :is(button, a)[class*="bg-emerald-600"],
+html:not(.dark) :is(button, a)[class*="bg-emerald-500"],
+html:not(.dark) :is(button, a)[class*="bg-teal-600"],
+html:not(.dark) :is(button, a)[class*="bg-teal-500"],
+html:not(.dark) :is(button, a)[class*="bg-rose-600"],
+html:not(.dark) :is(button, a)[class*="bg-rose-500"],
+html:not(.dark) :is(button, a)[class*="bg-amber-600"],
+html:not(.dark) :is(button, a)[class*="bg-amber-500"],
+html:not(.dark) :is(button, a)[class*="bg-blue-600"],
+html:not(.dark) :is(button, a)[class*="bg-indigo-600"],
+html:not(.dark) :is(button, a)[class*="bg-purple-600"],
+html:not(.dark) :is(button, a)[class*="from-emerald-"] {
+  color: #ffffff !important;
+}
+
+html:not(.dark) :is(button, a)[class*="bg-emerald-600"] *,
+html:not(.dark) :is(button, a)[class*="bg-emerald-500"] *,
+html:not(.dark) :is(button, a)[class*="bg-teal-600"] *,
+html:not(.dark) :is(button, a)[class*="bg-teal-500"] *,
+html:not(.dark) :is(button, a)[class*="bg-rose-600"] *,
+html:not(.dark) :is(button, a)[class*="bg-rose-500"] *,
+html:not(.dark) :is(button, a)[class*="bg-amber-600"] *,
+html:not(.dark) :is(button, a)[class*="bg-blue-600"] *,
+html:not(.dark) :is(button, a)[class*="from-emerald-"] * {
+  color: #ffffff !important;
+}
+
+/* Form Inputs & Controls */
+html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html:not(.dark) select,
+html:not(.dark) textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+html:not(.dark) input:focus,
+html:not(.dark) select:focus,
+html:not(.dark) textarea:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+  background-color: #ffffff !important;
+}
+
+/* Gradient Headline Texts in Light Mode */
+html:not(.dark) .bg-clip-text.text-transparent {
+  background-image: linear-gradient(to right, #047857, #0d9488, #0284c7) !important;
+}
+
+html:not(.dark) .from-white {
+  background-image: linear-gradient(to right, #0f172a, #334155, #059669) !important;
+}
+
+/* Modal Backdrops in Light Mode */
+html:not(.dark) .bg-black\/80,
+html:not(.dark) .bg-slate-950\/80 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+}
+
+/* Navigation & Interactive Hovers */
+html:not(.dark) nav a.text-slate-300:hover,
+html:not(.dark) nav button.text-slate-300:hover,
+html:not(.dark) aside button.text-slate-400:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Badges & Counter Chips */
+html:not(.dark) .bg-slate-800\/90,
+html:not(.dark) .bg-slate-800\/60 {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) span.bg-slate-800 {
+  background-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+/* Data Tables */
+html:not(.dark) table {
+  background-color: #ffffff !important;
+}
+
+html:not(.dark) thead {
+  background-color: #f8fafc !important;
+}
+
+html:not(.dark) thead th {
+  color: #475569 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html:not(.dark) tbody tr {
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+html:not(.dark) tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+/* Code & Snippets */
+html:not(.dark) code,
+html:not(.dark) pre {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
 }

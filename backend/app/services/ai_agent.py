@@ -1,5 +1,6 @@
 import json
 import logging
+import random
 from typing import Dict, Any, List, Optional
 from uuid import UUID
 import datetime as dt
@@ -14,7 +15,8 @@ from app.models import (
     ClinicAppointment,
     RestaurantTable,
     MenuItem,
-    RestaurantReservation
+    RestaurantReservation,
+    RestaurantOrder
 )
 from app.services.llm_client import get_llm_client
 
@@ -120,26 +122,52 @@ CRITICAL RULES:
    - Keep responses short (1-2 friendly sentences), professional, and natural.
 """
     else:  # Restaurant
-        base_prompt = f"""You are a warm, polite, and efficient bilingual host and reservation specialist at {business.name}.
+        base_prompt = f"""You are a warm, hospitable, and efficient bilingual host and order specialist at {business.name}.
 Today's Date: {current_date_str}, Current Time: {current_time_str}.
 (Use this for relative dates like "aaj", "today", "kal", "tomorrow").
 
-CRITICAL RULES:
+CRITICAL RESTAURANT ORDERING & CONVERSATION RULES:
+
 1. SCRIPT & LANGUAGE STRICT MATCHING:
-   - If the user uses Latin alphabet (English or Roman Urdu such as "table chahiye", "menu dikhao", "aaj sham"), YOU MUST REPLY IN ROMAN URDU OR ENGLISH. NEVER USE ARABIC/URDU SCRIPT (اردو رسم الخط) unless the user typed in actual Urdu script characters.
-   - Default to polite Roman Urdu when user speaks Roman Urdu (e.g., "Ji bilkul", "Kitne logon ke liye table chahiye?").
+   - If user speaks in English or Roman Urdu ("menu dikhao", "1 burger chahiye", "order place karo", "kitna bill bana"), REPLY IN THE SAME LANGUAGE (English or Roman Urdu). NEVER use Arabic/Urdu script (اردو رسم الخط) unless the user explicitly types in Arabic/Urdu script characters.
+   - Use a polite, friendly hospitality tone (e.g., "Ji bilkul", "Zaroor! Main abhi aap ke liye menu share karta hoon").
 
-2. MEMORY & NO REDUNDANT QUESTIONS:
-   - NEVER ask for information the user has already provided in the conversation history!
-   - If user asks about dishes or menu, call `get_menu` immediately.
-   - If you have: Date + Time + Party Size:
-     * Call `check_table_availability` immediately.
-   - If you have: Date + Time + Party Size + Customer Name + Phone:
-     * DO NOT ask another confirmation question! CALL `reserve_table_and_order` IMMEDIATELY using tool calls.
+2. FULL FOOD ORDERING FLOW & EDGE CASES:
+   - MENU INQUIRIES:
+     * When user asks for menu, food list, prices, or recommendations ("menu dikhao", "kya dishes hain", "send menu", "burgers dikhao"), CALL `get_menu` IMMEDIATELY.
+     * Present menu items clearly in clean bullet points with item names, prices in Rs., and categories.
+     * If they ask for a specific category (e.g. "Burgers" or "Drinks"), filter `get_menu(category=...)`.
+   - HANDLING ITEMS & CART:
+     * If user asks for an item NOT on the menu (e.g. Biryani when only burgers exist), politely explain that it's not currently available and recommend the closest available dishes from the menu. Never pretend unavailable dishes exist.
+     * Accurately track items, quantities, and customizations ("2 zinger burgers", "extra cheese", "no mayo", "spicy").
+     * Handle changes gracefully: adding items, removing items, changing quantities ("make it 2 instead of 1").
+   - FULFILLMENT TYPE & DELIVERY DETAILS:
+     * Confirm whether they want **Delivery** or **Pickup/Takeaway** (or Dine-in).
+     * If Delivery: ask for their complete delivery address (House #, Street, Area) if not already given.
+     * Ask for their name and contact phone if not already provided in history.
+   - MANDATORY ORDER CONFIRMATION BEFORE PLACING:
+     * Before calling `place_order`, ALWAYS present a clear summary of the order:
+       🛒 *Order Summary:*
+       - [Qty]x [Item Name] @ Rs. [Price] = Rs. [Subtotal]
+       - Total Bill: Rs. [Total]
+       📍 Address: [Delivery Address or Pickup]
+       👤 Customer: [Name] ([Phone])
+       📝 Special Notes: [Customizations if any]
+     * Ask the user: "Kya main yeh order place kar doon?" / "Should I place this order for you?"
+   - PLACING THE ORDER:
+     * When the customer confirms ("haan", "yes", "theek hai", "confirm", "proceed", "place it", "ji zaroor"), call `place_order` IMMEDIATELY using tool calls.
+     * After tool execution, confirm with their Order Number (e.g. #ORD-1234), total amount, and reassure them:
+       "Aapka order kitchen ko send kar diya gaya hai! Jaise hi kitchen mein status change hoga, aapko yahan WhatsApp par update mil jayegi."
+   - ORDER STATUS INQUIRY:
+     * If user asks about an existing order ("Mera order kahan hai?", "Is my food ready?", "ORD-1234 status"), call `get_order_status` and politely update them with the current status.
 
-3. PROACTIVE EXECUTION:
-   - Always invoke the database tools (`get_menu`, `check_table_availability`, `reserve_table_and_order`) instead of speaking hypothetically.
-   - Keep responses short (1-2 friendly sentences), professional, and natural.
+3. TABLE RESERVATIONS (IF REQUESTED):
+   - If the user specifically asks to reserve a dine-in table, use `check_table_availability` and `reserve_table_and_order`.
+
+4. PROACTIVE EXECUTION:
+   - Always invoke the database tools (`get_menu`, `place_order`, `get_order_status`, `check_table_availability`) instead of speaking hypothetically.
+   - Do NOT ask repetitive questions for info the user has already provided in chat history.
+   - Keep messages concise, friendly, and structured.
 """
 
     return f"{base_prompt.strip()}\n{VOICE_CAPABILITY_PROMPT}"
@@ -225,13 +253,80 @@ RESTAURANT_TOOLS = [
         "type": "function",
         "function": {
           "name": "get_menu",
-          "description": "Get available restaurant menu items, optionally filtered by food category.",
+          "description": "Get available restaurant menu items with categories and prices. Optionally filter by category (e.g. Starters, Burgers, Pizzas, Desserts, Drinks). Call this when user asks for the menu, prices, food choices, or recommendations.",
           "parameters": {
             "type": "object",
             "properties": {
               "category": {
                 "type": "string",
-                "description": "Optional category filter (e.g. Starters, Mains, Pastas, Desserts, Drinks)"
+                "description": "Optional category filter (e.g. Starters, Mains, Burgers, Pizzas, Desserts, Drinks)"
+              }
+            }
+          }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+          "name": "place_order",
+          "description": "Place a confirmed customer food order for delivery, pickup, or dine-in. Only call this AFTER confirming the order items, quantities, total bill, and customer/delivery details with the customer.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "customer_name": {
+                "type": "string",
+                "description": "Customer full name"
+              },
+              "customer_phone": {
+                "type": "string",
+                "description": "Customer contact phone number"
+              },
+              "order_items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "item_name": {"type": "string", "description": "Name of the dish or menu item"},
+                    "quantity": {"type": "integer", "description": "Quantity of portions/items (minimum 1)"},
+                    "notes": {"type": "string", "description": "Customizations like extra cheese, no onion, spicy, etc."}
+                  },
+                  "required": ["item_name", "quantity"]
+                },
+                "description": "List of dishes, quantities, and customizations"
+              },
+              "order_type": {
+                "type": "string",
+                "enum": ["delivery", "pickup", "dine_in"],
+                "description": "Fulfillment type: delivery, pickup, or dine_in (default: delivery)"
+              },
+              "delivery_address": {
+                "type": "string",
+                "description": "Full street/house address for delivery (required if order_type is delivery)"
+              },
+              "special_instructions": {
+                "type": "string",
+                "description": "Optional kitchen or rider delivery instructions"
+              }
+            },
+            "required": ["customer_name", "customer_phone", "order_items"]
+          }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+          "name": "get_order_status",
+          "description": "Check the current kitchen status of an order. Call this when customer asks 'where is my order?', 'is food ready?', or asks about an order number or phone.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "order_number": {
+                "type": "string",
+                "description": "Order number (e.g. ORD-1234 or 1234)"
+              },
+              "customer_phone": {
+                "type": "string",
+                "description": "Customer phone number"
               }
             }
           }
@@ -266,7 +361,7 @@ RESTAURANT_TOOLS = [
         "type": "function",
         "function": {
           "name": "reserve_table_and_order",
-          "description": "Reserve a table and optionally place a pre-order of food items.",
+          "description": "Reserve a table for dining in and optionally place a pre-order of food items.",
           "parameters": {
             "type": "object",
             "properties": {
@@ -630,6 +725,160 @@ def execute_reserve_table_and_order(
         "estimated_total": round(total_bill, 2)
     }
 
+def execute_place_order(
+    business_id: UUID,
+    db: Session,
+    customer_name: str,
+    customer_phone: str,
+    order_items: List[Dict[str, Any]],
+    order_type: str = "delivery",
+    delivery_address: Optional[str] = None,
+    special_instructions: Optional[str] = None,
+    channel: str = "whatsapp"
+) -> Dict[str, Any]:
+    if not order_items:
+        return {"error": "No dishes provided. Please specify items and quantities."}
+
+    all_menu = db.query(MenuItem).filter(MenuItem.business_id == business_id).all()
+    processed_items = []
+    total_bill = 0.0
+
+    for item in order_items:
+        raw_name = str(item.get("item_name", "")).strip()
+        try:
+            qty = int(item.get("quantity", 1))
+        except (ValueError, TypeError):
+            qty = 1
+        if qty < 1:
+            qty = 1
+        notes = item.get("notes")
+
+        # Fuzzy matching against database menu items
+        matched = None
+        for m in all_menu:
+            if m.name.lower() == raw_name.lower():
+                matched = m
+                break
+        if not matched:
+            for m in all_menu:
+                if raw_name.lower() in m.name.lower() or m.name.lower() in raw_name.lower():
+                    matched = m
+                    break
+
+        if matched:
+            price = float(matched.price)
+            subtotal = price * qty
+            total_bill += subtotal
+            processed_items.append({
+                "item_id": str(matched.id),
+                "name": matched.name,
+                "price": price,
+                "quantity": qty,
+                "subtotal": round(subtotal, 2),
+                "notes": notes
+            })
+        else:
+            try:
+                custom_price = float(item.get("price", 0.0) or 0.0)
+            except (ValueError, TypeError):
+                custom_price = 0.0
+            subtotal = custom_price * qty
+            total_bill += subtotal
+            processed_items.append({
+                "name": raw_name,
+                "price": custom_price,
+                "quantity": qty,
+                "subtotal": round(subtotal, 2),
+                "notes": notes
+            })
+
+    # Generate unique readable order number: ORD-XXXX
+    ord_num = f"ORD-{random.randint(1000, 9999)}"
+    for _ in range(10):
+        exists = db.query(RestaurantOrder).filter(
+            RestaurantOrder.business_id == business_id,
+            RestaurantOrder.order_number == ord_num
+        ).first()
+        if not exists:
+            break
+        ord_num = f"ORD-{random.randint(1000, 9999)}"
+
+    order = RestaurantOrder(
+        business_id=business_id,
+        order_number=ord_num,
+        customer_name=customer_name.strip() or "Valued Guest",
+        customer_phone=customer_phone.strip(),
+        order_type=order_type.strip().lower() if order_type else "delivery",
+        delivery_address=delivery_address.strip() if delivery_address else None,
+        items=processed_items,
+        total_amount=round(total_bill, 2),
+        status="received",
+        special_instructions=special_instructions.strip() if special_instructions else None,
+        channel=channel
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    return {
+        "status": "received",
+        "order_id": str(order.id),
+        "order_number": order.order_number,
+        "customer_name": order.customer_name,
+        "customer_phone": order.customer_phone,
+        "order_type": order.order_type,
+        "delivery_address": order.delivery_address,
+        "items": processed_items,
+        "total_amount": float(order.total_amount),
+        "special_instructions": order.special_instructions,
+        "message": f"Order #{order.order_number} has been placed successfully and dispatched to kitchen."
+    }
+
+def execute_get_order_status(
+    business_id: UUID,
+    db: Session,
+    order_number: Optional[str] = None,
+    customer_phone: Optional[str] = None
+) -> Dict[str, Any]:
+    query = db.query(RestaurantOrder).filter(RestaurantOrder.business_id == business_id)
+
+    if order_number and str(order_number).strip():
+        clean_ord = str(order_number).strip().upper()
+        if not clean_ord.startswith("ORD-") and clean_ord.isdigit():
+            clean_ord = f"ORD-{clean_ord}"
+        query = query.filter(RestaurantOrder.order_number.ilike(f"%{clean_ord}%"))
+    elif customer_phone and str(customer_phone).strip():
+        digits = "".join(c for c in str(customer_phone) if c.isdigit())
+        if len(digits) >= 6:
+            query = query.filter(RestaurantOrder.customer_phone.ilike(f"%{digits[-6:]}%"))
+
+    order = query.order_by(RestaurantOrder.created_at.desc()).first()
+    if not order:
+        return {
+            "found": False,
+            "message": "No active order found with these details. Please verify your order number or phone."
+        }
+
+    status_descriptions = {
+        "received": "Order receive ho chuka hai aur kitchen queue mein hai (Received / Pending in Kitchen).",
+        "in_kitchen": "Order kitchen mein fresh ban raha hai (Currently being prepared in kitchen).",
+        "ready": "Order ready ho chuka hai (Ready for pickup / Out for delivery)!",
+        "completed": "Order deliver / complete ho chuka hai. Shukriya!",
+        "cancelled": "Order cancel ho chuka hai."
+    }
+
+    return {
+        "found": True,
+        "order_number": order.order_number,
+        "status": order.status,
+        "status_explanation": status_descriptions.get(order.status, f"Current status: {order.status}"),
+        "total_amount": float(order.total_amount),
+        "items": order.items,
+        "order_type": order.order_type,
+        "delivery_address": order.delivery_address,
+        "created_at": order.created_at.strftime("%I:%M %p") if order.created_at else ""
+    }
+
 # ==================== MAIN CHAT ORCHESTRATOR ====================
 
 def process_chat(
@@ -773,6 +1022,28 @@ def process_chat(
                     if tool_result.get("status") == "confirmed":
                         action_taken = "table_reserved"
                         booking_details = tool_result
+                elif clean_name == "place_order":
+                    tool_result = execute_place_order(
+                        business.id,
+                        db,
+                        customer_name=fn_args.get("customer_name", "Valued Guest"),
+                        customer_phone=fn_args.get("customer_phone", ""),
+                        order_items=fn_args.get("order_items", []),
+                        order_type=fn_args.get("order_type", "delivery"),
+                        delivery_address=fn_args.get("delivery_address"),
+                        special_instructions=fn_args.get("special_instructions"),
+                        channel="whatsapp"
+                    )
+                    if tool_result.get("status") == "received":
+                        action_taken = "order_placed"
+                        booking_details = tool_result
+                elif clean_name == "get_order_status":
+                    tool_result = execute_get_order_status(
+                        business.id,
+                        db,
+                        order_number=fn_args.get("order_number"),
+                        customer_phone=fn_args.get("customer_phone")
+                    )
                 else:
                     tool_result = {"error": f"Unknown tool: {clean_name}"}
 

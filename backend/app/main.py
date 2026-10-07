@@ -31,12 +31,31 @@ async def lifespan(app: FastAPI):
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS hashed_password TEXT;
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'business_admin';
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS business_id UUID;
-                ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
                 ALTER TABLE users ALTER COLUMN email_verified_at DROP NOT NULL;
                 ALTER TABLE users ALTER COLUMN verified_at DROP NOT NULL;
                 ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
                 ALTER TABLE users ALTER COLUMN remember_token DROP NOT NULL;
                 ALTER TABLE users ALTER COLUMN username DROP NOT NULL;
+
+                CREATE TABLE IF NOT EXISTS restaurant_orders (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+                    order_number VARCHAR(50) NOT NULL,
+                    customer_name VARCHAR(255) NOT NULL,
+                    customer_phone VARCHAR(50) NOT NULL,
+                    order_type VARCHAR(50) NOT NULL DEFAULT 'delivery',
+                    delivery_address TEXT,
+                    items JSONB NOT NULL DEFAULT '[]'::jsonb,
+                    total_amount NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+                    status VARCHAR(50) NOT NULL DEFAULT 'received',
+                    special_instructions TEXT,
+                    channel VARCHAR(50) DEFAULT 'whatsapp',
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+                CREATE INDEX IF NOT EXISTS idx_restaurant_orders_biz ON restaurant_orders(business_id);
+                CREATE INDEX IF NOT EXISTS idx_restaurant_orders_status ON restaurant_orders(status);
+                CREATE INDEX IF NOT EXISTS idx_restaurant_orders_phone ON restaurant_orders(customer_phone);
             """))
             conn.commit()
     except Exception:

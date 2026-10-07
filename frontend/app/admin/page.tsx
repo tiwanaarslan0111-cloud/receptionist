@@ -36,6 +36,7 @@ import {
   HelpCircle,
   MessageSquare,
 } from "lucide-react";
+import ThemeToggle from "../components/ThemeToggle";
 import {
   getAuth,
   clearAuth,
@@ -452,6 +453,7 @@ export default function AdminPage() {
           </div>
 
           <div className="flex items-center gap-2.5">
+            <ThemeToggle />
             <button
               onClick={() => setIsGuideModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:text-white bg-emerald-950/60 hover:bg-emerald-900/80 rounded-xl border border-emerald-600/30 transition-all cursor-pointer shadow-sm shadow-emerald-900/20"

@@ -43,6 +43,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import WhatsAppConnectCard from "@/src/components/WhatsAppConnectCard";
+import ThemeToggle from "../components/ThemeToggle";
 import {
   getAuth,
   clearAuth,
@@ -797,6 +798,7 @@ export default function ClinicDashboardPage() {
                 {clinicProfile.is_widget_enabled !== false ? "AI Receptionist Active" : "Widget Disabled"}
               </span>
             )}
+            <ThemeToggle />
             <button
               onClick={handleRefresh}
               disabled={refreshing}

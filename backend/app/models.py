@@ -109,6 +109,24 @@ class RestaurantReservation(Base):
     order_items = Column(JSONB, default=list)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
+class RestaurantOrder(Base):
+    __tablename__ = "restaurant_orders"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    business_id = Column(UUID(as_uuid=True), ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True)
+    order_number = Column(String(50), nullable=False, index=True)
+    customer_name = Column(String(255), nullable=False)
+    customer_phone = Column(String(50), nullable=False, index=True)
+    order_type = Column(String(50), nullable=False, default="delivery")  # 'delivery', 'pickup', 'dine_in'
+    delivery_address = Column(Text, nullable=True)
+    items = Column(JSONB, nullable=False, default=list)
+    total_amount = Column(Numeric(10, 2), nullable=False, default=0.0)
+    status = Column(String(50), nullable=False, default="received", index=True)  # 'received', 'in_kitchen', 'ready', 'completed', 'cancelled'
+    special_instructions = Column(Text, nullable=True)
+    channel = Column(String(50), default="whatsapp")
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+
 # =================== DEMO LEADS / CONTACT ===================
 
 class DemoLead(Base):

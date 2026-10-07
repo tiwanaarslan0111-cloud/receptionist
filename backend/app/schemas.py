@@ -234,6 +234,37 @@ class RestaurantReservationResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+# ==================== RESTAURANT ORDER SCHEMAS ====================
+
+class RestaurantOrderCreateRequest(BaseModel):
+    customer_name: str = Field(..., min_length=1, max_length=255, examples=["Arslan"])
+    customer_phone: str = Field(..., min_length=3, max_length=50, examples=["+923001234567"])
+    order_type: str = Field(default="delivery", pattern="^(delivery|pickup|dine_in)$")
+    delivery_address: Optional[str] = None
+    items: List[Dict[str, Any]] = Field(default_factory=list)
+    special_instructions: Optional[str] = None
+
+class RestaurantOrderStatusUpdateRequest(BaseModel):
+    status: str = Field(..., pattern="^(received|in_kitchen|ready|completed|cancelled)$")
+
+class RestaurantOrderResponse(BaseModel):
+    id: UUID
+    business_id: UUID
+    order_number: str
+    customer_name: str
+    customer_phone: str
+    order_type: str
+    delivery_address: Optional[str] = None
+    items: List[Any] = Field(default_factory=list)
+    total_amount: float
+    status: str
+    special_instructions: Optional[str] = None
+    channel: Optional[str] = "whatsapp"
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 # ==================== WIDGET CHAT SCHEMAS ====================
 
 class WidgetChatRequest(BaseModel):

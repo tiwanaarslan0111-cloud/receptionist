@@ -493,6 +493,47 @@ export async function getRestaurantReservations(): Promise<RestaurantReservation
   return fetchApi<RestaurantReservation[]>("/api/restaurant/reservations");
 }
 
+export interface RestaurantOrderItem {
+  item_id?: string;
+  name: string;
+  price: number;
+  quantity: number;
+  subtotal: number;
+  notes?: string;
+}
+
+export interface RestaurantOrder {
+  id: string;
+  business_id: string;
+  order_number: string;
+  customer_name: string;
+  customer_phone: string;
+  order_type: "delivery" | "pickup" | "dine_in";
+  delivery_address?: string | null;
+  items: RestaurantOrderItem[];
+  total_amount: number;
+  status: "received" | "in_kitchen" | "ready" | "completed" | "cancelled";
+  special_instructions?: string | null;
+  channel?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export async function getRestaurantOrders(status?: string): Promise<RestaurantOrder[]> {
+  const query = status && status !== "all" ? `?status=${encodeURIComponent(status)}` : "";
+  return fetchApi<RestaurantOrder[]>(`/api/restaurant/orders${query}`);
+}
+
+export async function updateRestaurantOrderStatus(
+  orderId: string,
+  newStatus: "received" | "in_kitchen" | "ready" | "completed" | "cancelled"
+): Promise<RestaurantOrder> {
+  return fetchApi<RestaurantOrder>(`/api/restaurant/orders/${orderId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: newStatus }),
+  });
+}
+
 // ==================== BUSINESS WHATSAPP (WAHA) API ====================
 
 export interface WhatsAppStatusResponse {

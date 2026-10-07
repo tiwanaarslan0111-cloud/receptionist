@@ -1,18 +1,27 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+import random
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
-from app.database import get_db
-from app.models import Business, MenuItem, RestaurantTable, RestaurantReservation
+from app.database import get_db, SessionLocal
+from app.models import Business, MenuItem, RestaurantTable, RestaurantReservation, RestaurantOrder
 from app.schemas import (
     MenuItemCreateRequest,
     MenuItemUpdateAvailabilityRequest,
     MenuItemResponse,
     RestaurantTableCreateRequest,
     RestaurantTableResponse,
-    RestaurantReservationResponse
+    RestaurantReservationResponse,
+    RestaurantOrderCreateRequest,
+    RestaurantOrderStatusUpdateRequest,
+    RestaurantOrderResponse
 )
 from app.deps import get_current_restaurant
+from app.services import waha_service, whatsapp_service
+
+logger = logging.getLogger("restaurant_orders")
 
 router = APIRouter(prefix="/api/restaurant", tags=["Restaurant Management"])
 
@@ -161,3 +170,188 @@ def list_reservations(
         .all()
     )
     return reservations
+
+# ==================== KITCHEN ORDER MANAGEMENT ====================
+
+async def send_order_status_notification(order_id: UUID, new_status: str, business_id: UUID):
+    """Sends proactive WhatsApp notification to the customer when the kitchen updates their order status."""
+    db: Session = SessionLocal()
+    try:
+        order = db.query(RestaurantOrder).filter(
+            RestaurantOrder.id == order_id,
+            RestaurantOrder.business_id == business_id
+        ).first()
+        business = db.query(Business).filter(Business.id == business_id).first()
+        if not order or not business:
+            return
+
+        status_messages = {
+            "in_kitchen": (
+                f"👨‍🍳 *Update from {business.name}*\n"
+                f"Aapka order *#{order.order_number}* kitchen mein prepare ho raha hai!\n"
+                f"💰 Total: Rs. {float(order.total_amount):,.2f}\n"
+                f"Jaise hi ready hoga, hum aapko notify karenge!"
+            ),
+            "ready": (
+                f"🛵 *Update from {business.name}*\n"
+                f"Good news! Aapka order *#{order.order_number}* bilkul fresh tayyar ho chuka hai"
+                + (f" aur delivery ke liye ready hai (Address: {order.delivery_address})!" if order.order_type == "delivery" and order.delivery_address else " aur pickup ke liye counter par ready hai!")
+            ),
+            "completed": (
+                f"🎉 *Order Completed - {business.name}*\n"
+                f"Aapka order *#{order.order_number}* deliver / complete ho chuka hai.\n"
+                f"Humare restaurant se order karne ka shukriya! Enjoy your meal! ⭐"
+            ),
+            "cancelled": (
+                f"⚠️ *Order Update - {business.name}*\n"
+                f"Aapka order *#{order.order_number}* cancel kiya gaya hai.\n"
+                f"Kisi bhi sawal ke liye aap humse rabta kar sakte hain."
+            )
+        }
+
+        msg = status_messages.get(new_status)
+        if not msg:
+            return
+
+        customer_phone = order.customer_phone
+        clean_num = "".join(c for c in customer_phone if c.isdigit())
+        if clean_num.startswith("0") and len(clean_num) == 11:
+            clean_num = "92" + clean_num[1:]
+        chat_id = customer_phone if customer_phone.endswith("@c.us") else f"{clean_num}@c.us"
+
+        # 1. Try WAHA first
+        session_name = waha_service.get_session_name(business.id)
+        waha_status = await waha_service.get_waha_session_status(session_name)
+        sent = False
+        if waha_status == "WORKING":
+            sent = await waha_service.send_waha_text(session_name, chat_id, msg)
+            logger.info(f"[Order Notification WAHA] Sent to {chat_id}: {sent}")
+
+        # 2. Fallback to Meta WhatsApp Cloud API if configured
+        if not sent and business.inbound_phone_id:
+            try:
+                await whatsapp_service.send_whatsapp_text(
+                    to_phone=clean_num,
+                    message=msg,
+                    phone_number_id=business.inbound_phone_id
+                )
+                logger.info(f"[Order Notification Meta API] Sent to {clean_num}")
+            except Exception as e:
+                logger.warning(f"[Order Notification Meta API error] {e}")
+
+    except Exception as e:
+        logger.error(f"[send_order_status_notification error] {e}", exc_info=True)
+    finally:
+        db.close()
+
+
+@router.get(
+    "/orders",
+    response_model=List[RestaurantOrderResponse],
+    summary="List all restaurant orders with optional status filter"
+)
+def list_orders(
+    status: Optional[str] = None,
+    current_business: Business = Depends(get_current_restaurant),
+    db: Session = Depends(get_db)
+):
+    query = db.query(RestaurantOrder).filter(RestaurantOrder.business_id == current_business.id)
+    if status and status.strip() and status != "all":
+        query = query.filter(RestaurantOrder.status == status.strip())
+    orders = query.order_by(RestaurantOrder.created_at.desc()).all()
+    return orders
+
+
+@router.get(
+    "/orders/{order_id}",
+    response_model=RestaurantOrderResponse,
+    summary="Get single order details"
+)
+def get_order(
+    order_id: UUID,
+    current_business: Business = Depends(get_current_restaurant),
+    db: Session = Depends(get_db)
+):
+    order = db.query(RestaurantOrder).filter(
+        RestaurantOrder.id == order_id,
+        RestaurantOrder.business_id == current_business.id
+    ).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+
+@router.post(
+    "/orders",
+    response_model=RestaurantOrderResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Manually create an order from the restaurant dashboard"
+)
+def create_manual_order(
+    payload: RestaurantOrderCreateRequest,
+    current_business: Business = Depends(get_current_restaurant),
+    db: Session = Depends(get_db)
+):
+    total_bill = 0.0
+    for item in payload.items:
+        qty = item.get("quantity", 1)
+        price = item.get("price", 0.0)
+        total_bill += float(price) * float(qty)
+
+    ord_num = f"ORD-{random.randint(1000, 9999)}"
+    new_order = RestaurantOrder(
+        business_id=current_business.id,
+        order_number=ord_num,
+        customer_name=payload.customer_name.strip(),
+        customer_phone=payload.customer_phone.strip(),
+        order_type=payload.order_type,
+        delivery_address=payload.delivery_address.strip() if payload.delivery_address else None,
+        items=payload.items,
+        total_amount=round(total_bill, 2),
+        status="received",
+        special_instructions=payload.special_instructions.strip() if payload.special_instructions else None,
+        channel="dashboard"
+    )
+    db.add(new_order)
+    db.commit()
+    db.refresh(new_order)
+    return new_order
+
+
+@router.patch(
+    "/orders/{order_id}/status",
+    response_model=RestaurantOrderResponse,
+    summary="Update kitchen order status and automatically notify customer via WhatsApp"
+)
+def update_order_status(
+    order_id: UUID,
+    payload: RestaurantOrderStatusUpdateRequest,
+    background_tasks: BackgroundTasks,
+    current_business: Business = Depends(get_current_restaurant),
+    db: Session = Depends(get_db)
+):
+    order = db.query(RestaurantOrder).filter(
+        RestaurantOrder.id == order_id,
+        RestaurantOrder.business_id == current_business.id
+    ).first()
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Order with ID '{order_id}' not found"
+        )
+
+    previous_status = order.status
+    order.status = payload.status
+    db.commit()
+    db.refresh(order)
+
+    # If status actually changed, dispatch WhatsApp notification
+    if previous_status != payload.status:
+        background_tasks.add_task(
+            send_order_status_notification,
+            order.id,
+            payload.status,
+            current_business.id
+        )
+
+    return order
