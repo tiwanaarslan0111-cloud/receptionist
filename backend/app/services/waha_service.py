@@ -198,11 +198,14 @@ async def send_waha_text(session_name: str, chat_id: str, message: str) -> bool:
         try:
             res = await client.post(f"{base_url}/api/sendText", json=payload, headers=headers)
             if res.status_code not in [200, 201]:
-                print(f"[WAHA Send Error] status={res.status_code}, response={res.text}")
-                logger.error(f"[WAHA Send Error] status={res.status_code}, response={res.text}")
+                err_msg = f"status={res.status_code}, response={res.text}"
+                print(f"[WAHA Send Error] {err_msg}")
+                logger.error(f"[WAHA Send Error] session={session_name}, chat_id={chat_id}, {err_msg}")
                 return False
             return True
         except Exception as e:
-            print(f"[WAHA Send Exception] {e}")
-            logger.error(f"[WAHA send_waha_text error] {e}")
+            err_type = type(e).__name__
+            err_msg = str(e) or repr(e)
+            print(f"[WAHA Send Exception] {err_type}: {err_msg}")
+            logger.error(f"[WAHA send_waha_text error] session={session_name}, chat_id={chat_id}, {err_type}: {err_msg}", exc_info=True)
             return False

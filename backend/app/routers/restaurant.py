@@ -213,28 +213,75 @@ async def send_order_status_notification(order_id: UUID, new_status: str, busine
         if not msg:
             return
 
-        customer_phone = order.customer_phone
-        clean_num = "".join(c for c in customer_phone if c.isdigit())
-        if clean_num.startswith("0") and len(clean_num) == 11:
-            clean_num = "92" + clean_num[1:]
-        chat_id = customer_phone if customer_phone.endswith("@c.us") else f"{clean_num}@c.us"
+        customer_phone = (order.customer_phone or "").strip()
 
-        # 1. Try WAHA first
-        session_name = waha_service.get_session_name(business.id, business.business_type)
-        waha_status = await waha_service.get_waha_session_status(session_name)
-        if waha_status != "WORKING" and session_name != f"clinic_{business.id}":
-            legacy_name = f"clinic_{business.id}"
-            legacy_status = await waha_service.get_waha_session_status(legacy_name)
-            if legacy_status == "WORKING":
-                session_name = legacy_name
-                waha_status = legacy_status
+        # Determine target WhatsApp Chat ID:
+        # Prioritize explicit whatsapp_chat_id (from incoming WhatsApp chat / LID)
+        chat_id = None
+        clean_num = None
+
+        if getattr(order, "whatsapp_chat_id", None):
+            chat_id = str(order.whatsapp_chat_id).strip()
+
+        # If chat_id not set, resolve from customer_phone
+        if not chat_id and customer_phone:
+            # Check if customer_phone already contains a full WhatsApp JID
+            if any(customer_phone.endswith(suffix) for suffix in ["@c.us", "@lid", "@s.whatsapp.net"]):
+                chat_id = customer_phone
+            else:
+                digits = "".join(c for c in customer_phone if c.isdigit())
+                # Handle international prefixes
+                if digits.startswith("00"):
+                    digits = digits[2:]
+                elif digits.startswith("0"):
+                    # Pakistani mobile format (e.g. 0300... -> 92300...)
+                    digits = "92" + digits[1:]
+                elif len(digits) == 10 and digits.startswith("3"):
+                    # 10-digit Pakistani number missing country code (e.g. 3001234567 -> 923001234567)
+                    digits = "92" + digits
+
+                clean_num = digits
+                if len(digits) >= 8:
+                    chat_id = f"{digits}@c.us"
+
+        if not clean_num:
+            clean_num = "".join(c for c in customer_phone if c.isdigit())
+            if clean_num.startswith("0"):
+                clean_num = "92" + clean_num[1:]
+
+        if not chat_id:
+            logger.warning(f"[Order Notification] Cannot dispatch notification: Invalid phone/chatId for order #{order.order_number} ({customer_phone})")
+            return
+
+        # 1. Try WAHA first (prioritizing the exact session of the ongoing chat)
+        session_name = getattr(order, "whatsapp_session", None)
+        waha_status = "NOT_STARTED"
+        if session_name:
+            session_name = str(session_name).strip()
+            waha_status = await waha_service.get_waha_session_status(session_name)
+
+        if waha_status != "WORKING":
+            type_session = waha_service.get_session_name(business.id, business.business_type)
+            type_status = await waha_service.get_waha_session_status(type_session)
+            if type_status == "WORKING":
+                session_name = type_session
+                waha_status = type_status
+            elif type_session != f"clinic_{business.id}":
+                legacy_name = f"clinic_{business.id}"
+                legacy_status = await waha_service.get_waha_session_status(legacy_name)
+                if legacy_status == "WORKING":
+                    session_name = legacy_name
+                    waha_status = legacy_status
+
         sent = False
         if waha_status == "WORKING":
             sent = await waha_service.send_waha_text(session_name, chat_id, msg)
-            logger.info(f"[Order Notification WAHA] Sent to {chat_id}: {sent}")
+            logger.info(f"[Order Notification WAHA] session={session_name}, target={chat_id}, sent={sent}")
+        else:
+            logger.warning(f"[Order Notification WAHA] No active WORKING session found for business {business.id}")
 
         # 2. Fallback to Meta WhatsApp Cloud API if configured
-        if not sent and business.inbound_phone_id:
+        if not sent and business.inbound_phone_id and clean_num:
             try:
                 await whatsapp_service.send_whatsapp_text(
                     to_phone=clean_num,

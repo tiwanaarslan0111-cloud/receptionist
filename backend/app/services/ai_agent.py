@@ -519,7 +519,8 @@ def execute_book_appointment(
     slot_id: str,
     patient_name: str,
     patient_phone: str,
-    symptoms: str = ""
+    symptoms: str = "",
+    whatsapp_chat_id: Optional[str] = None
 ) -> Dict[str, Any]:
     try:
         doc_uuid = UUID(doctor_id)
@@ -563,7 +564,8 @@ def execute_book_appointment(
         slot_id=slot_uuid,
         patient_name=patient_name.strip(),
         patient_phone=patient_phone.strip(),
-        symptoms_reported=symptoms.strip() if symptoms else None
+        symptoms_reported=symptoms.strip() if symptoms else None,
+        whatsapp_chat_id=whatsapp_chat_id.strip() if whatsapp_chat_id else None
     )
     db.add(appointment)
     db.commit()
@@ -665,7 +667,8 @@ def execute_reserve_table_and_order(
     date: str,
     time: str,
     party_size: int,
-    order_items: Optional[List[Dict[str, Any]]] = None
+    order_items: Optional[List[Dict[str, Any]]] = None,
+    whatsapp_chat_id: Optional[str] = None
 ) -> Dict[str, Any]:
     try:
         res_date = parse_date_string(date)
@@ -722,7 +725,8 @@ def execute_reserve_table_and_order(
         booking_date=res_date,
         booking_time=res_time,
         party_size=party_size,
-        order_items=processed_items
+        order_items=processed_items,
+        whatsapp_chat_id=whatsapp_chat_id.strip() if whatsapp_chat_id else None
     )
     db.add(reservation)
     db.commit()
@@ -749,7 +753,9 @@ def execute_place_order(
     order_type: str = "delivery",
     delivery_address: Optional[str] = None,
     special_instructions: Optional[str] = None,
-    channel: str = "whatsapp"
+    channel: str = "whatsapp",
+    whatsapp_chat_id: Optional[str] = None,
+    whatsapp_session: Optional[str] = None
 ) -> Dict[str, Any]:
     if not order_items:
         return {"error": "No dishes provided. Please specify items and quantities."}
@@ -829,7 +835,9 @@ def execute_place_order(
         total_amount=round(total_bill, 2),
         status="received",
         special_instructions=special_instructions.strip() if special_instructions else None,
-        channel=channel
+        channel=channel,
+        whatsapp_chat_id=whatsapp_chat_id.strip() if whatsapp_chat_id else None,
+        whatsapp_session=whatsapp_session.strip() if whatsapp_session else None
     )
     db.add(order)
     db.commit()
@@ -841,6 +849,8 @@ def execute_place_order(
         "order_number": order.order_number,
         "customer_name": order.customer_name,
         "customer_phone": order.customer_phone,
+        "whatsapp_chat_id": order.whatsapp_chat_id,
+        "whatsapp_session": order.whatsapp_session,
         "order_type": order.order_type,
         "delivery_address": order.delivery_address,
         "items": processed_items,
@@ -901,7 +911,9 @@ def process_chat(
     session_id: str,
     business: Business,
     db: Session,
-    customer_phone: Optional[str] = None
+    customer_phone: Optional[str] = None,
+    whatsapp_chat_id: Optional[str] = None,
+    whatsapp_session: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Orchestrates the chat turn:
@@ -1019,7 +1031,7 @@ def process_chat(
                         symptoms = fn_args.get("symptoms", "")
                         if not symptoms or not str(symptoms).strip():
                             symptoms = "General Consultation"
-                        p_phone = str(fn_args.get("patient_phone", "")).strip() or (customer_phone.strip() if customer_phone else "")
+                        p_phone = (customer_phone.strip() if customer_phone else "") or str(fn_args.get("patient_phone", "")).strip()
                         tool_result = execute_book_appointment(
                             business.id,
                             db,
@@ -1027,7 +1039,8 @@ def process_chat(
                             slot_id=str(fn_args.get("slot_id", "")),
                             patient_name=str(fn_args.get("patient_name", "")),
                             patient_phone=p_phone,
-                            symptoms=symptoms
+                            symptoms=symptoms,
+                            whatsapp_chat_id=whatsapp_chat_id
                         )
                         if tool_result.get("status") == "confirmed":
                             action_taken = "appointment_booked"
@@ -1046,7 +1059,7 @@ def process_chat(
                             time=fn_args.get("time", "")
                         )
                     elif clean_name == "reserve_table_and_order":
-                        c_phone = str(fn_args.get("customer_phone", "")).strip() or (customer_phone.strip() if customer_phone else "")
+                        c_phone = (customer_phone.strip() if customer_phone else "") or str(fn_args.get("customer_phone", "")).strip()
                         tool_result = execute_reserve_table_and_order(
                             business.id,
                             db,
@@ -1055,13 +1068,14 @@ def process_chat(
                             date=fn_args.get("date", ""),
                             time=fn_args.get("time", ""),
                             party_size=int(fn_args.get("party_size", 1)),
-                            order_items=fn_args.get("order_items")
+                            order_items=fn_args.get("order_items"),
+                            whatsapp_chat_id=whatsapp_chat_id
                         )
                         if tool_result.get("status") == "confirmed":
                             action_taken = "table_reserved"
                             booking_details = tool_result
                     elif clean_name == "place_order":
-                        c_phone = str(fn_args.get("customer_phone", "")).strip() or (customer_phone.strip() if customer_phone else "")
+                        c_phone = (customer_phone.strip() if customer_phone else "") or str(fn_args.get("customer_phone", "")).strip()
                         tool_result = execute_place_order(
                             business.id,
                             db,
@@ -1071,7 +1085,9 @@ def process_chat(
                             order_type=fn_args.get("order_type", "delivery"),
                             delivery_address=fn_args.get("delivery_address"),
                             special_instructions=fn_args.get("special_instructions"),
-                            channel="whatsapp"
+                            channel="whatsapp",
+                            whatsapp_chat_id=whatsapp_chat_id,
+                            whatsapp_session=whatsapp_session
                         )
                         if tool_result.get("status") == "received":
                             action_taken = "order_placed"

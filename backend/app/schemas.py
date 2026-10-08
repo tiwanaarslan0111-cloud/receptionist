@@ -243,6 +243,7 @@ class RestaurantOrderCreateRequest(BaseModel):
     delivery_address: Optional[str] = None
     items: List[Dict[str, Any]] = Field(default_factory=list)
     special_instructions: Optional[str] = None
+    whatsapp_chat_id: Optional[str] = None
 
 class RestaurantOrderStatusUpdateRequest(BaseModel):
     status: str = Field(..., pattern="^(received|in_kitchen|ready|completed|cancelled)$")
@@ -260,6 +261,8 @@ class RestaurantOrderResponse(BaseModel):
     status: str
     special_instructions: Optional[str] = None
     channel: Optional[str] = "whatsapp"
+    whatsapp_chat_id: Optional[str] = None
+    whatsapp_session: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 

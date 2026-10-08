@@ -56,6 +56,16 @@ async def lifespan(app: FastAPI):
                 CREATE INDEX IF NOT EXISTS idx_restaurant_orders_biz ON restaurant_orders(business_id);
                 CREATE INDEX IF NOT EXISTS idx_restaurant_orders_status ON restaurant_orders(status);
                 CREATE INDEX IF NOT EXISTS idx_restaurant_orders_phone ON restaurant_orders(customer_phone);
+
+                ALTER TABLE restaurant_orders ADD COLUMN IF NOT EXISTS whatsapp_chat_id VARCHAR(100);
+                CREATE INDEX IF NOT EXISTS idx_restaurant_orders_wa_chat ON restaurant_orders(whatsapp_chat_id);
+                ALTER TABLE restaurant_orders ADD COLUMN IF NOT EXISTS whatsapp_session VARCHAR(100);
+
+                ALTER TABLE clinic_appointments ADD COLUMN IF NOT EXISTS whatsapp_chat_id VARCHAR(100);
+                CREATE INDEX IF NOT EXISTS idx_clinic_appointments_wa_chat ON clinic_appointments(whatsapp_chat_id);
+
+                ALTER TABLE restaurant_reservations ADD COLUMN IF NOT EXISTS whatsapp_chat_id VARCHAR(100);
+                CREATE INDEX IF NOT EXISTS idx_restaurant_reservations_wa_chat ON restaurant_reservations(whatsapp_chat_id);
             """))
             conn.commit()
     except Exception:

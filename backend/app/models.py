@@ -74,6 +74,7 @@ class ClinicAppointment(Base):
     patient_name = Column(String(255), nullable=False)
     patient_phone = Column(String(50), nullable=False)
     symptoms_reported = Column(Text, nullable=True)
+    whatsapp_chat_id = Column(String(100), nullable=True, index=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
 # =================== RESTAURANT MODULE ===================
@@ -107,6 +108,7 @@ class RestaurantReservation(Base):
     booking_time = Column(Time, nullable=False)
     party_size = Column(Integer, nullable=False)
     order_items = Column(JSONB, default=list)
+    whatsapp_chat_id = Column(String(100), nullable=True, index=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
 class RestaurantOrder(Base):
@@ -124,6 +126,8 @@ class RestaurantOrder(Base):
     status = Column(String(50), nullable=False, default="received", index=True)  # 'received', 'in_kitchen', 'ready', 'completed', 'cancelled'
     special_instructions = Column(Text, nullable=True)
     channel = Column(String(50), default="whatsapp")
+    whatsapp_chat_id = Column(String(100), nullable=True, index=True)
+    whatsapp_session = Column(String(100), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 

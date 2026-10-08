@@ -216,13 +216,15 @@ async def process_waha_message_task(
         clean_phone = sender_chat_id.split("@")[0]
         session_id = f"wa_qr_{business.id}_{clean_phone}"
 
-        # 3. Call AI Receptionist agent (preserves slot locking and context, passing customer phone)
+        # 3. Call AI Receptionist agent (preserves slot locking and context, passing customer phone, chat ID, and active session)
         res = process_chat(
             message=user_text,
             session_id=session_id,
             business=business,
             db=db,
-            customer_phone=sender_phone
+            customer_phone=sender_phone,
+            whatsapp_chat_id=sender_chat_id,
+            whatsapp_session=session_name
         )
         if hasattr(res, "__await__"):
             result = await res

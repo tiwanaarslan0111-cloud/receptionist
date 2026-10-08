@@ -285,10 +285,10 @@ def test_ai_agent_system_prompt_instructs_known_phone(restaurant_tenant):
 
 
 @pytest.mark.asyncio
-async def test_process_waha_message_task_passes_customer_phone(clinic_tenant_a):
+async def test_process_waha_message_task_passes_customer_phone_and_chat_id(clinic_tenant_a):
     business = clinic_tenant_a["business"]
     session_name = f"clinic_{business.id}"
-    sender_chat_id = "923001234567@c.us"
+    sender_chat_id = "272455679660215@lid"
     user_text = "Book appointment for Dr John"
 
     with patch("app.routers.waha.process_chat") as mock_chat, \
@@ -304,4 +304,135 @@ async def test_process_waha_message_task_passes_customer_phone(clinic_tenant_a):
 
         mock_chat.assert_called_once()
         call_kwargs = mock_chat.call_args.kwargs
-        assert call_kwargs["customer_phone"] == "+923001234567"
+        assert call_kwargs["whatsapp_chat_id"] == "272455679660215@lid"
+
+
+@pytest.mark.asyncio
+async def test_send_order_status_notification_with_lid(restaurant_tenant, db: Session):
+    from app.models import RestaurantOrder
+    from app.routers.restaurant import send_order_status_notification
+
+    business = restaurant_tenant["business"]
+    order = RestaurantOrder(
+        business_id=business.id,
+        order_number="ORD-TEST-1",
+        customer_name="Arslan",
+        customer_phone="0303030303",
+        whatsapp_chat_id="272455679660215@lid",
+        order_type="delivery",
+        total_amount=60.0,
+        status="received"
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    with patch("app.services.waha_service.get_waha_session_status", new_callable=AsyncMock) as mock_status, \
+         patch("app.services.waha_service.send_waha_text", new_callable=AsyncMock) as mock_send:
+        mock_status.return_value = "WORKING"
+        mock_send.return_value = True
+
+        await send_order_status_notification(order.id, "ready", business.id)
+
+        mock_send.assert_called_once()
+        called_chat_id = mock_send.call_args.kwargs["chat_id"] if "chat_id" in mock_send.call_args.kwargs else mock_send.call_args.args[1]
+        assert called_chat_id == "272455679660215@lid"
+
+
+@pytest.mark.asyncio
+async def test_send_order_status_notification_normalizes_pakistan_phone(restaurant_tenant, db: Session):
+    from app.models import RestaurantOrder
+    from app.routers.restaurant import send_order_status_notification
+
+    business = restaurant_tenant["business"]
+    order = RestaurantOrder(
+        business_id=business.id,
+        order_number="ORD-TEST-2",
+        customer_name="Customer",
+        customer_phone="03001234567",
+        order_type="delivery",
+        total_amount=50.0,
+        status="received"
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    with patch("app.services.waha_service.get_waha_session_status", new_callable=AsyncMock) as mock_status, \
+         patch("app.services.waha_service.send_waha_text", new_callable=AsyncMock) as mock_send:
+        mock_status.return_value = "WORKING"
+        mock_send.return_value = True
+
+        await send_order_status_notification(order.id, "in_kitchen", business.id)
+
+        mock_send.assert_called_once()
+        called_chat_id = mock_send.call_args.kwargs["chat_id"] if "chat_id" in mock_send.call_args.kwargs else mock_send.call_args.args[1]
+        assert called_chat_id == "923001234567@c.us"
+
+
+@pytest.mark.asyncio
+async def test_send_order_status_notification_normalizes_ten_digit_pakistan_phone(restaurant_tenant, db: Session):
+    from app.models import RestaurantOrder
+    from app.routers.restaurant import send_order_status_notification
+
+    business = restaurant_tenant["business"]
+    order = RestaurantOrder(
+        business_id=business.id,
+        order_number="ORD-TEST-3",
+        customer_name="Customer",
+        customer_phone="0303030303",
+        order_type="delivery",
+        total_amount=50.0,
+        status="received"
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    with patch("app.services.waha_service.get_waha_session_status", new_callable=AsyncMock) as mock_status, \
+         patch("app.services.waha_service.send_waha_text", new_callable=AsyncMock) as mock_send:
+        mock_status.return_value = "WORKING"
+        mock_send.return_value = True
+
+        await send_order_status_notification(order.id, "ready", business.id)
+
+        mock_send.assert_called_once()
+        called_chat_id = mock_send.call_args.kwargs["chat_id"] if "chat_id" in mock_send.call_args.kwargs else mock_send.call_args.args[1]
+        assert called_chat_id == "92303030303@c.us"
+        assert not called_chat_id.startswith("0")
+
+
+@pytest.mark.asyncio
+async def test_send_order_status_notification_uses_saved_whatsapp_session(restaurant_tenant, db: Session):
+    from app.models import RestaurantOrder
+    from app.routers.restaurant import send_order_status_notification
+
+    business = restaurant_tenant["business"]
+    custom_session = f"clinic_{business.id}"
+    order = RestaurantOrder(
+        business_id=business.id,
+        order_number="ORD-TEST-4",
+        customer_name="Ongoing Chat Customer",
+        customer_phone="03001234567",
+        whatsapp_chat_id="272455679660215@lid",
+        whatsapp_session=custom_session,
+        order_type="delivery",
+        total_amount=75.0,
+        status="received"
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    with patch("app.services.waha_service.get_waha_session_status", new_callable=AsyncMock) as mock_status, \
+         patch("app.services.waha_service.send_waha_text", new_callable=AsyncMock) as mock_send:
+        mock_status.return_value = "WORKING"
+        mock_send.return_value = True
+
+        await send_order_status_notification(order.id, "ready", business.id)
+
+        mock_send.assert_called_once()
+        called_session = mock_send.call_args.kwargs["session_name"] if "session_name" in mock_send.call_args.kwargs else mock_send.call_args.args[0]
+        called_chat_id = mock_send.call_args.kwargs["chat_id"] if "chat_id" in mock_send.call_args.kwargs else mock_send.call_args.args[1]
+        assert called_session == custom_session
+        assert called_chat_id == "272455679660215@lid"
