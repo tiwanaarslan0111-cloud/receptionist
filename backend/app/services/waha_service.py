@@ -209,3 +209,57 @@ async def send_waha_text(session_name: str, chat_id: str, message: str) -> bool:
             print(f"[WAHA Send Exception] {err_type}: {err_msg}")
             logger.error(f"[WAHA send_waha_text error] session={session_name}, chat_id={chat_id}, {err_type}: {err_msg}", exc_info=True)
             return False
+
+
+async def resolve_lid_to_phone(session_name: str, lid: str) -> Optional[str]:
+    """
+    Attempts to resolve a WhatsApp Linked ID (@lid) to an actual phone number (@c.us)
+    using WAHA Lids and Contacts APIs.
+    Returns international formatted phone (e.g. '+92345678764') if resolved, or None.
+    """
+    if not lid:
+        return None
+    raw_lid = lid.split("@")[0].strip()
+    if not raw_lid:
+        return None
+
+    headers = _get_waha_headers()
+    base_url = get_waha_base_url()
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        # 1. Try WAHA Lids API: /api/{session}/lids/{lid}
+        candidate_params = [raw_lid, f"{raw_lid}@lid"]
+        for p in candidate_params:
+            try:
+                res = await client.get(f"{base_url}/api/{session_name}/lids/{p}", headers=headers)
+                if res.status_code == 200:
+                    data = res.json()
+                    val = None
+                    if isinstance(data, dict):
+                        val = data.get("pn") or data.get("phoneNumber") or data.get("phone")
+                    elif isinstance(data, str):
+                        val = data
+                    if val and isinstance(val, str):
+                        digits = "".join(c for c in val.split("@")[0] if c.isdigit())
+                        if len(digits) >= 9:
+                            return f"+{digits}"
+            except Exception as e:
+                logger.debug(f"[WAHA resolve_lid_to_phone lids endpoint failed] {e}")
+
+        # 2. Try WAHA Contacts API: /api/contacts/{chatId} and /api/{session}/contacts/{chatId}
+        for endpoint in [f"/api/{session_name}/contacts/{raw_lid}@lid", f"/api/contacts/{raw_lid}@lid"]:
+            try:
+                res = await client.get(f"{base_url}{endpoint}", headers=headers)
+                if res.status_code == 200:
+                    data = res.json()
+                    if isinstance(data, dict):
+                        val = data.get("number") or data.get("phoneNumber") or data.get("pn")
+                        if val and isinstance(val, str):
+                            digits = "".join(c for c in val.split("@")[0] if c.isdigit())
+                            if len(digits) >= 9:
+                                return f"+{digits}"
+            except Exception as e:
+                logger.debug(f"[WAHA resolve_lid_to_phone contact endpoint failed] {e}")
+
+    return None
+

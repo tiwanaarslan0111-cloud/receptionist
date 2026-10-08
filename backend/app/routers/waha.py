@@ -110,19 +110,43 @@ async def reset_whatsapp_session(current_business: Business = Depends(get_curren
     return {"status": "reset_complete"}
 
 
+def is_lid_identifier(jid_or_phone: Optional[str]) -> bool:
+    """Returns True if the identifier is a WhatsApp Linked ID (@lid), not a real phone number."""
+    if not jid_or_phone:
+        return False
+    val = str(jid_or_phone).strip()
+    if "@lid" in val.lower():
+        return True
+    digits = "".join(c for c in val if c.isdigit())
+    # WhatsApp LIDs are typically 14-16 digits starting with 2724 or 2345
+    if len(digits) >= 15 and (digits.startswith("2724") or digits.startswith("2345")):
+        return True
+    return False
+
+
 def extract_sender_phone(sender_chat_id: str, msg_payload: Optional[Dict[str, Any]] = None) -> str:
     """
     Extracts the customer's real phone number from sender_chat_id or msg_payload.
-    Handles standard JIDs (e.g. '923001234567@c.us' -> '+923001234567') and
-    resolves @lid devices by inspecting payload metadata or falls back to clean ID.
+    Inspects standard JIDs (e.g. '923001234567@c.us' -> '+923001234567') and
+    resolves @lid devices by inspecting payload metadata.
+    IMPORTANT: Never returns an @lid as a phone number. Returns '' if phone cannot be determined.
     """
     if msg_payload and isinstance(msg_payload, dict):
         candidates = [
             msg_payload.get("_data", {}).get("Info", {}).get("SenderAlt"),
-            msg_payload.get("author"),
-            msg_payload.get("participant"),
+            msg_payload.get("_data", {}).get("Info", {}).get("SenderPn"),
+            msg_payload.get("_data", {}).get("Info", {}).get("senderAlt"),
+            msg_payload.get("_data", {}).get("Info", {}).get("senderPn"),
             msg_payload.get("_data", {}).get("author"),
             msg_payload.get("_data", {}).get("from"),
+            msg_payload.get("_data", {}).get("sender"),
+            msg_payload.get("_data", {}).get("id", {}).get("participant"),
+            msg_payload.get("author"),
+            msg_payload.get("participant"),
+            msg_payload.get("pn"),
+            msg_payload.get("senderPn"),
+            msg_payload.get("fromPn"),
+            msg_payload.get("from"),
         ]
         for cand in candidates:
             if cand and isinstance(cand, str) and ("@c.us" in cand or "@s.whatsapp.net" in cand):
@@ -131,10 +155,11 @@ def extract_sender_phone(sender_chat_id: str, msg_payload: Optional[Dict[str, An
                 if len(digits) >= 9:
                     return f"+{digits}"
 
-    if sender_chat_id:
+    # Only extract digits from sender_chat_id if it is NOT an @lid identifier
+    if sender_chat_id and not is_lid_identifier(sender_chat_id):
         raw = sender_chat_id.split("@")[0].strip()
         digits = "".join(c for c in raw if c.isdigit())
-        if digits:
+        if len(digits) >= 9:
             return f"+{digits}"
 
     return ""
@@ -150,7 +175,18 @@ async def process_waha_message_task(
     db: Session = SessionLocal()
     try:
         sender_phone = extract_sender_phone(sender_chat_id, msg_payload)
+        # If sender_phone could not be determined synchronously and this is an @lid, query WAHA Lids API
+        if not sender_phone and is_lid_identifier(sender_chat_id):
+            try:
+                resolved_pn = await waha_service.resolve_lid_to_phone(session_name, sender_chat_id)
+                if resolved_pn:
+                    sender_phone = resolved_pn
+                    print(f"[WAHA AI Worker] Resolved LID {sender_chat_id} to phone: {sender_phone}")
+            except Exception as lid_err:
+                logger.debug(f"[WAHA Worker] Could not resolve LID to phone: {lid_err}")
+
         print(f"\n[WAHA AI Worker] Incoming message from {sender_chat_id} (Phone: {sender_phone}, Session: {session_name}): {user_text}")
+
 
         # 1. Resolve business ID (handles 'clinic_<uuid>', 'restaurant_<uuid>', 'biz_<uuid>', or fallback)
         business = None

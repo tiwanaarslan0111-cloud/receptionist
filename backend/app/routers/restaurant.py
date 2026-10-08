@@ -215,22 +215,23 @@ async def send_order_status_notification(order_id: UUID, new_status: str, busine
 
         customer_phone = (order.customer_phone or "").strip()
 
-        # Determine target WhatsApp Chat ID:
-        # Prioritize explicit whatsapp_chat_id (from incoming WhatsApp chat / LID)
-        chat_id = None
+        # Determine target WhatsApp Chat IDs (ongoing chat thread and customer phone)
+        targets_to_try = []
         clean_num = None
+        phone_chat_id = None
 
-        if getattr(order, "whatsapp_chat_id", None):
-            chat_id = str(order.whatsapp_chat_id).strip()
+        # 1. Target candidate: chat from which the customer placed the order (preserves ongoing WhatsApp thread)
+        order_chat = (getattr(order, "whatsapp_chat_id", None) or "").strip()
+        if order_chat:
+            targets_to_try.append(order_chat)
 
-        # If chat_id not set, resolve from customer_phone
-        if not chat_id and customer_phone:
-            # Check if customer_phone already contains a full WhatsApp JID
-            if any(customer_phone.endswith(suffix) for suffix in ["@c.us", "@lid", "@s.whatsapp.net"]):
-                chat_id = customer_phone
-            else:
+        # 2. Target candidate: normalized E.164 phone number as @c.us
+        if customer_phone:
+            if any(customer_phone.endswith(suffix) for suffix in ["@c.us", "@s.whatsapp.net"]):
+                phone_chat_id = customer_phone
+                clean_num = "".join(c for c in customer_phone.split("@")[0] if c.isdigit())
+            elif "@lid" not in customer_phone:
                 digits = "".join(c for c in customer_phone if c.isdigit())
-                # Handle international prefixes
                 if digits.startswith("00"):
                     digits = digits[2:]
                 elif digits.startswith("0"):
@@ -242,15 +243,18 @@ async def send_order_status_notification(order_id: UUID, new_status: str, busine
 
                 clean_num = digits
                 if len(digits) >= 8:
-                    chat_id = f"{digits}@c.us"
+                    phone_chat_id = f"{digits}@c.us"
 
-        if not clean_num:
+        if phone_chat_id and phone_chat_id not in targets_to_try:
+            targets_to_try.append(phone_chat_id)
+
+        if not clean_num and customer_phone and "@lid" not in customer_phone:
             clean_num = "".join(c for c in customer_phone if c.isdigit())
             if clean_num.startswith("0"):
                 clean_num = "92" + clean_num[1:]
 
-        if not chat_id:
-            logger.warning(f"[Order Notification] Cannot dispatch notification: Invalid phone/chatId for order #{order.order_number} ({customer_phone})")
+        if not targets_to_try:
+            logger.warning(f"[Order Notification] Cannot dispatch notification: No valid phone/chatId for order #{order.order_number} ({customer_phone})")
             return
 
         # 1. Try WAHA first (prioritizing the exact session of the ongoing chat)
@@ -275,8 +279,11 @@ async def send_order_status_notification(order_id: UUID, new_status: str, busine
 
         sent = False
         if waha_status == "WORKING":
-            sent = await waha_service.send_waha_text(session_name, chat_id, msg)
-            logger.info(f"[Order Notification WAHA] session={session_name}, target={chat_id}, sent={sent}")
+            for target in targets_to_try:
+                sent = await waha_service.send_waha_text(session_name, target, msg)
+                logger.info(f"[Order Notification WAHA] session={session_name}, target={target}, sent={sent}")
+                if sent:
+                    break
         else:
             logger.warning(f"[Order Notification WAHA] No active WORKING session found for business {business.id}")
 

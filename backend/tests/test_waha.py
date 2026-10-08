@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -269,8 +269,9 @@ def test_extract_sender_phone():
     }
     assert extract_sender_phone("272455679660215@lid", payload_with_alt) == "+923007654321"
 
-    # LID without alt metadata
-    assert extract_sender_phone("272455679660215@lid", {}) == "+272455679660215"
+    # LID without phone metadata MUST return empty string, NEVER treat LID as phone number
+    assert extract_sender_phone("272455679660215@lid", {}) == ""
+    assert extract_sender_phone("234534434334334@lid", {}) == ""
 
 
 def test_ai_agent_system_prompt_instructs_known_phone(restaurant_tenant):
@@ -280,8 +281,42 @@ def test_ai_agent_system_prompt_instructs_known_phone(restaurant_tenant):
     prompt = get_system_prompt(business, customer_phone="+923001234567")
 
     assert "+923001234567" in prompt
-    assert "NEVER ask the customer for their phone number" in prompt
-    assert 'customer_phone="+923001234567"' in prompt
+    assert "Default Detected Phone Number: +923001234567" in prompt
+    assert "CUSTOMER CAN CHANGE PHONE NUMBER" in prompt
+    assert 'customer_phone' in prompt
+
+
+def test_resolve_effective_phone_allows_customer_to_change_phone():
+    from app.services.ai_agent import resolve_effective_phone
+
+    # 1. Customer provides a new phone number
+    assert resolve_effective_phone("0345678764", "+923001234567") == "0345678764"
+    assert resolve_effective_phone("+92345678764", "+923001234567") == "+92345678764"
+
+    # 2. No new phone provided, falls back to detected phone
+    assert resolve_effective_phone("", "+923001234567") == "+923001234567"
+    assert resolve_effective_phone(None, "+923001234567") == "+923001234567"
+
+    # 3. If an LID format was somehow passed in arg, it gets discarded
+    assert resolve_effective_phone("272455679660215@lid", "+923001234567") == "+923001234567"
+    assert resolve_effective_phone("272455679660215@lid", "") == ""
+
+
+@pytest.mark.asyncio
+async def test_resolve_lid_to_phone():
+    from app.services import waha_service
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"lid": "272455679660215@lid", "pn": "92345678764@c.us"}
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = mock_resp
+
+        res = await waha_service.resolve_lid_to_phone("restaurant_1", "272455679660215@lid")
+        assert res == "+92345678764"
+
+
 
 
 @pytest.mark.asyncio
@@ -305,6 +340,7 @@ async def test_process_waha_message_task_passes_customer_phone_and_chat_id(clini
         mock_chat.assert_called_once()
         call_kwargs = mock_chat.call_args.kwargs
         assert call_kwargs["whatsapp_chat_id"] == "272455679660215@lid"
+        assert call_kwargs["customer_phone"] == ""
 
 
 @pytest.mark.asyncio
@@ -436,3 +472,100 @@ async def test_send_order_status_notification_uses_saved_whatsapp_session(restau
         called_chat_id = mock_send.call_args.kwargs["chat_id"] if "chat_id" in mock_send.call_args.kwargs else mock_send.call_args.args[1]
         assert called_session == custom_session
         assert called_chat_id == "272455679660215@lid"
+
+
+@pytest.mark.asyncio
+async def test_process_waha_message_task_resolves_lid_via_waha_service(clinic_tenant_a):
+    business = clinic_tenant_a["business"]
+    session_name = f"clinic_{business.id}"
+    sender_chat_id = "272455679660215@lid"
+    user_text = "Book appointment for Dr John"
+
+    with patch("app.routers.waha.process_chat") as mock_chat, \
+         patch("app.services.waha_service.resolve_lid_to_phone", new_callable=AsyncMock) as mock_resolve, \
+         patch("app.services.waha_service.send_waha_text", new_callable=AsyncMock) as mock_send:
+        mock_resolve.return_value = "+92345678764"
+        mock_chat.return_value = {"text": "Appointment booked"}
+        mock_send.return_value = True
+
+        await process_waha_message_task(
+            session_name=session_name,
+            sender_chat_id=sender_chat_id,
+            user_text=user_text
+        )
+
+        mock_chat.assert_called_once()
+        call_kwargs = mock_chat.call_args.kwargs
+        assert call_kwargs["customer_phone"] == "+92345678764"
+        assert call_kwargs["whatsapp_chat_id"] == "272455679660215@lid"
+        assert call_kwargs["whatsapp_session"] == session_name
+
+
+def test_customer_can_change_phone_number_in_place_order(restaurant_tenant, db: Session):
+    from app.services.ai_agent import execute_place_order
+    from app.models import MenuItem
+
+    business = restaurant_tenant["business"]
+    item = MenuItem(
+        business_id=business.id,
+        name="Beef Burger",
+        category="Burgers",
+        price=650.0,
+        is_available=True
+    )
+    db.add(item)
+    db.commit()
+
+    # Customer changes phone number to 0345678764 even though chat came from a different number/session
+    res = execute_place_order(
+        business_id=business.id,
+        db=db,
+        customer_name="Arslan",
+        customer_phone="0345678764",
+        order_items=[{"item_name": "Beef Burger", "quantity": 1}],
+        whatsapp_chat_id="272455679660215@lid",
+        whatsapp_session=f"restaurant_{business.id}"
+    )
+
+    assert res["status"] == "received"
+    assert res["customer_phone"] == "0345678764"
+    assert res["whatsapp_chat_id"] == "272455679660215@lid"
+    assert res["whatsapp_session"] == f"restaurant_{business.id}"
+
+
+@pytest.mark.asyncio
+async def test_send_order_status_notification_multi_target_fallback(restaurant_tenant, db: Session):
+    from app.models import RestaurantOrder
+    from app.routers.restaurant import send_order_status_notification
+
+    business = restaurant_tenant["business"]
+    order = RestaurantOrder(
+        business_id=business.id,
+        order_number="ORD-TEST-FALLBACK",
+        customer_name="Arslan",
+        customer_phone="0345678764",
+        whatsapp_chat_id="272455679660215@lid",
+        whatsapp_session=f"restaurant_{business.id}",
+        order_type="delivery",
+        total_amount=650.0,
+        status="received"
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    with patch("app.services.waha_service.get_waha_session_status", new_callable=AsyncMock) as mock_status, \
+         patch("app.services.waha_service.send_waha_text", new_callable=AsyncMock) as mock_send:
+        mock_status.return_value = "WORKING"
+        # First send attempt to LID fails, second attempt to customer_phone succeeds
+        mock_send.side_effect = [False, True]
+
+        await send_order_status_notification(order.id, "in_kitchen", business.id)
+
+        assert mock_send.call_count == 2
+        # First call was to ongoing WhatsApp chat
+        assert mock_send.call_args_list[0].kwargs.get("chat_id") == "272455679660215@lid" or mock_send.call_args_list[0].args[1] == "272455679660215@lid"
+        # Second call was fallback to normalized customer phone
+        second_chat = mock_send.call_args_list[1].kwargs.get("chat_id") if "chat_id" in mock_send.call_args_list[1].kwargs else mock_send.call_args_list[1].args[1]
+        assert second_chat == "92345678764@c.us"
+

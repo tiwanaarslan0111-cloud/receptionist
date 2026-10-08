@@ -98,13 +98,20 @@ def get_system_prompt(business: Business, customer_phone: Optional[str] = None) 
     if customer_phone and customer_phone.strip():
         c_phone = customer_phone.strip()
         contact_section = f"""
-KNOWN CUSTOMER CONTACT INFO:
-- Customer WhatsApp Phone Number: {c_phone}
-- MANDATORY RULE: The user is messaging directly from this WhatsApp number: {c_phone}.
-- NEVER ask the customer for their phone number! You already have it ({c_phone}).
-- When calling `book_appointment`, automatically pass `patient_phone="{c_phone}"`.
-- When calling `place_order` or `reserve_table_and_order`, automatically pass `customer_phone="{c_phone}"`.
-- When checking status with `get_order_status`, use `customer_phone="{c_phone}"`.
+KNOWN CUSTOMER CONTACT INFO & PHONE NUMBER FLEXIBILITY:
+- Default Detected Phone Number: {c_phone}
+- By default, use this phone number ({c_phone}) for orders, appointments, or reservations so the customer does not have to re-type it.
+- NOT STRICT / CUSTOMER CAN CHANGE PHONE NUMBER: If the customer provides a different phone number or asks to change/update their contact number at any point (e.g. "mera doosra number 0345678764 hai", "use this number: ...", or changes it when confirming their order), YOU MUST ALWAYS RESPECT AND USE THE NEW NUMBER THEY PROVIDED!
+- When calling `place_order`, `reserve_table_and_order`, or `book_appointment`, pass the customer's preferred phone number. If they changed or specified a phone number, pass their new number in `customer_phone` / `patient_phone`. If they did not specify another number, pass `{c_phone}`.
+- In order confirmations or booking summaries, show the contact number: if the customer changed it, show their new number; otherwise show `{c_phone}`.
+- When checking status with `get_order_status`, use the customer's phone number `{c_phone}` (or their new number if updated).
+"""
+    else:
+        contact_section = f"""
+CUSTOMER CONTACT INFO:
+- Customer phone number is not pre-detected.
+- You MUST politely ask the customer for their contact phone number (e.g., "Aap ka rabta number / mobile number kya hai?") when taking their order or booking details before confirming.
+- When calling `place_order`, `reserve_table_and_order`, or `book_appointment`, pass the phone number provided by the customer in `customer_phone` / `patient_phone`.
 """
 
     if business.business_type == "clinic":
@@ -119,7 +126,7 @@ CRITICAL RULES:
 
 2. MEMORY & NO REDUNDANT QUESTIONS:
    - NEVER ask for information the user has already provided in the conversation history!
-   - NEVER ask for phone number if known above!
+   - Do NOT ask for phone number if already detected above, UNLESS the customer asks to change/update it!
    - If the user already told you:
      * Doctor name -> Do NOT ask which doctor they want.
      * Date/Time -> Do NOT ask for date/time again.
@@ -128,7 +135,7 @@ CRITICAL RULES:
      * Call `check_doctor_slots` immediately.
      * If a matching slot exists, offer it or book it.
    - If you have: Doctor + Slot + Patient Name:
-     * DO NOT ask another confirmation question! CALL `book_appointment` IMMEDIATELY using tool calls, using customer phone '{customer_phone or ""}'.
+     * DO NOT ask another confirmation question! CALL `book_appointment` IMMEDIATELY using tool calls, using the customer's preferred phone number (default: '{customer_phone or ""}' or their requested number).
      * If symptoms were not given, default `symptoms` to "General Consultation" and complete the booking. Do not block the user.
 
 3. PROACTIVE EXECUTION:
@@ -158,18 +165,18 @@ CRITICAL RESTAURANT ORDERING & CONVERSATION RULES:
    - FULFILLMENT TYPE & DELIVERY DETAILS:
      * Confirm whether they want **Delivery** or **Pickup/Takeaway** (or Dine-in).
      * If Delivery: ask for their complete delivery address (House #, Street, Area) if not already given.
-     * Ask for their name if not already provided in history. NEVER ask for phone number if known above!
+     * Ask for their name if not already provided in history. Use detected phone number ({customer_phone or ""}) unless the customer asks to change/provide another number!
    - MANDATORY ORDER CONFIRMATION BEFORE PLACING:
      * Before calling `place_order`, ALWAYS present a clear summary of the order:
        🛒 *Order Summary:*
        - [Qty]x [Item Name] @ Rs. [Price] = Rs. [Subtotal]
        - Total Bill: Rs. [Total]
        📍 Address: [Delivery Address or Pickup]
-       👤 Customer: [Name] ({customer_phone or '[Phone]'})
+       👤 Customer: [Name] (Phone: [Customer's preferred phone number])
        📝 Special Notes: [Customizations if any]
      * Ask the user: "Kya main yeh order place kar doon?" / "Should I place this order for you?"
    - PLACING THE ORDER:
-     * When the customer confirms ("haan", "yes", "theek hai", "confirm", "proceed", "place it", "ji zaroor"), call `place_order` IMMEDIATELY using tool calls, using customer phone '{customer_phone or ""}'.
+     * When the customer confirms ("haan", "yes", "theek hai", "confirm", "proceed", "place it", "ji zaroor"), call `place_order` IMMEDIATELY using tool calls, using the customer's preferred phone number.
      * After tool execution, confirm with their Order Number (e.g. #ORD-1234), total amount, and reassure them:
        "Aapka order kitchen ko send kar diya گیا hai! Jaise hi kitchen mein status change hoga, aapko yahan WhatsApp par update mil jayegi."
    - ORDER STATUS INQUIRY:
@@ -177,6 +184,7 @@ CRITICAL RESTAURANT ORDERING & CONVERSATION RULES:
 
 3. TABLE RESERVATIONS (IF REQUESTED):
    - If the user specifically asks to reserve a dine-in table, use `check_table_availability` and `reserve_table_and_order`.
+
 
 4. PROACTIVE EXECUTION:
    - Always invoke the database tools (`get_menu`, `place_order`, `get_order_status`, `check_table_availability`) instead of speaking hypothetically.
@@ -904,6 +912,37 @@ def execute_get_order_status(
         "created_at": order.created_at.strftime("%I:%M %p") if order.created_at else ""
     }
 
+def resolve_effective_phone(arg_phone: Optional[Any], default_phone: Optional[str]) -> str:
+    """
+    Resolves the effective customer/patient phone number.
+    Prioritizes explicit argument passed by the AI agent (e.g. when customer requested
+    a phone number change or provided their real number), filtering out invalid LID strings.
+    Falls back to detected default_phone if the argument is empty or not provided.
+    """
+    cleaned_arg = str(arg_phone or "").strip()
+    if cleaned_arg:
+        # Check if argument is an invalid LID format
+        if "@lid" in cleaned_arg.lower():
+            cleaned_arg = ""
+        else:
+            digits = "".join(c for c in cleaned_arg if c.isdigit())
+            # WhatsApp LIDs are typically 14-16 digits starting with 2724 or 2345
+            if len(digits) >= 15 and (digits.startswith("2724") or digits.startswith("2345")):
+                cleaned_arg = ""
+
+    if cleaned_arg:
+        return cleaned_arg
+
+    if default_phone and default_phone.strip():
+        c_def = default_phone.strip()
+        if "@lid" not in c_def.lower():
+            digits = "".join(c for c in c_def if c.isdigit())
+            if not (len(digits) >= 15 and (digits.startswith("2724") or digits.startswith("2345"))):
+                return c_def
+
+    return ""
+
+
 # ==================== MAIN CHAT ORCHESTRATOR ====================
 
 def process_chat(
@@ -1031,7 +1070,7 @@ def process_chat(
                         symptoms = fn_args.get("symptoms", "")
                         if not symptoms or not str(symptoms).strip():
                             symptoms = "General Consultation"
-                        p_phone = (customer_phone.strip() if customer_phone else "") or str(fn_args.get("patient_phone", "")).strip()
+                        p_phone = resolve_effective_phone(fn_args.get("patient_phone"), customer_phone)
                         tool_result = execute_book_appointment(
                             business.id,
                             db,
@@ -1059,7 +1098,7 @@ def process_chat(
                             time=fn_args.get("time", "")
                         )
                     elif clean_name == "reserve_table_and_order":
-                        c_phone = (customer_phone.strip() if customer_phone else "") or str(fn_args.get("customer_phone", "")).strip()
+                        c_phone = resolve_effective_phone(fn_args.get("customer_phone"), customer_phone)
                         tool_result = execute_reserve_table_and_order(
                             business.id,
                             db,
@@ -1075,7 +1114,7 @@ def process_chat(
                             action_taken = "table_reserved"
                             booking_details = tool_result
                     elif clean_name == "place_order":
-                        c_phone = (customer_phone.strip() if customer_phone else "") or str(fn_args.get("customer_phone", "")).strip()
+                        c_phone = resolve_effective_phone(fn_args.get("customer_phone"), customer_phone)
                         tool_result = execute_place_order(
                             business.id,
                             db,
@@ -1093,9 +1132,7 @@ def process_chat(
                             action_taken = "order_placed"
                             booking_details = tool_result
                     elif clean_name == "get_order_status":
-                        c_phone = fn_args.get("customer_phone")
-                        if (not c_phone or not str(c_phone).strip()) and customer_phone:
-                            c_phone = customer_phone.strip()
+                        c_phone = resolve_effective_phone(fn_args.get("customer_phone"), customer_phone)
                         tool_result = execute_get_order_status(
                             business.id,
                             db,
