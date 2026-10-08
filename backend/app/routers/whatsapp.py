@@ -89,11 +89,13 @@ async def process_whatsapp_message_task(
         else:
             prompt_input = user_text
 
+        sender_formatted = f"+{sender_phone}" if sender_phone and not str(sender_phone).startswith("+") else sender_phone
         res = process_chat(
             message=prompt_input,
             session_id=session_id,
             business=business,
-            db=db
+            db=db,
+            customer_phone=sender_formatted
         )
         if hasattr(res, "__await__"):
             result = await res

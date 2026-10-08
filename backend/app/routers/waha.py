@@ -110,11 +110,47 @@ async def reset_whatsapp_session(current_business: Business = Depends(get_curren
     return {"status": "reset_complete"}
 
 
-async def process_waha_message_task(session_name: str, sender_chat_id: str, user_text: str):
+def extract_sender_phone(sender_chat_id: str, msg_payload: Optional[Dict[str, Any]] = None) -> str:
+    """
+    Extracts the customer's real phone number from sender_chat_id or msg_payload.
+    Handles standard JIDs (e.g. '923001234567@c.us' -> '+923001234567') and
+    resolves @lid devices by inspecting payload metadata or falls back to clean ID.
+    """
+    if msg_payload and isinstance(msg_payload, dict):
+        candidates = [
+            msg_payload.get("_data", {}).get("Info", {}).get("SenderAlt"),
+            msg_payload.get("author"),
+            msg_payload.get("participant"),
+            msg_payload.get("_data", {}).get("author"),
+            msg_payload.get("_data", {}).get("from"),
+        ]
+        for cand in candidates:
+            if cand and isinstance(cand, str) and ("@c.us" in cand or "@s.whatsapp.net" in cand):
+                raw = cand.split("@")[0].strip()
+                digits = "".join(c for c in raw if c.isdigit())
+                if len(digits) >= 9:
+                    return f"+{digits}"
+
+    if sender_chat_id:
+        raw = sender_chat_id.split("@")[0].strip()
+        digits = "".join(c for c in raw if c.isdigit())
+        if digits:
+            return f"+{digits}"
+
+    return ""
+
+
+async def process_waha_message_task(
+    session_name: str,
+    sender_chat_id: str,
+    user_text: str,
+    msg_payload: Optional[Dict[str, Any]] = None
+):
     """Background task resolving business, running AI agent, and dispatching reply."""
     db: Session = SessionLocal()
     try:
-        print(f"\n[WAHA AI Worker] Incoming message from {sender_chat_id} (Session: {session_name}): {user_text}")
+        sender_phone = extract_sender_phone(sender_chat_id, msg_payload)
+        print(f"\n[WAHA AI Worker] Incoming message from {sender_chat_id} (Phone: {sender_phone}, Session: {session_name}): {user_text}")
 
         # 1. Resolve business ID (handles 'clinic_<uuid>', 'restaurant_<uuid>', 'biz_<uuid>', or fallback)
         business = None
@@ -180,12 +216,13 @@ async def process_waha_message_task(session_name: str, sender_chat_id: str, user
         clean_phone = sender_chat_id.split("@")[0]
         session_id = f"wa_qr_{business.id}_{clean_phone}"
 
-        # 3. Call AI Receptionist agent (preserves slot locking and context)
+        # 3. Call AI Receptionist agent (preserves slot locking and context, passing customer phone)
         res = process_chat(
             message=user_text,
             session_id=session_id,
             business=business,
-            db=db
+            db=db,
+            customer_phone=sender_phone
         )
         if hasattr(res, "__await__"):
             result = await res
@@ -273,7 +310,8 @@ async def handle_waha_webhook(request: Request, background_tasks: BackgroundTask
         process_waha_message_task,
         session_name=session_name,
         sender_chat_id=sender_chat_id,
-        user_text=body
+        user_text=body,
+        msg_payload=msg_data
     )
 
     return {"status": "queued"}

@@ -250,3 +250,58 @@ def test_tool_schemas_and_handlers_allow_nullable(db: Session, restaurant_tenant
     # 4. Verify execute_suggest_doctors works safely with None symptom
     res_doc = execute_suggest_doctors(clinic_tenant_a["business"].id, db, symptom=None)
     assert "doctors" in res_doc
+
+
+def test_extract_sender_phone():
+    from app.routers.waha import extract_sender_phone
+
+    # Standard JID
+    assert extract_sender_phone("923001234567@c.us") == "+923001234567"
+    assert extract_sender_phone("923219876543@s.whatsapp.net") == "+923219876543"
+
+    # LID with SenderAlt metadata
+    payload_with_alt = {
+        "_data": {
+            "Info": {
+                "SenderAlt": "923007654321@s.whatsapp.net"
+            }
+        }
+    }
+    assert extract_sender_phone("272455679660215@lid", payload_with_alt) == "+923007654321"
+
+    # LID without alt metadata
+    assert extract_sender_phone("272455679660215@lid", {}) == "+272455679660215"
+
+
+def test_ai_agent_system_prompt_instructs_known_phone(restaurant_tenant):
+    from app.services.ai_agent import get_system_prompt
+
+    business = restaurant_tenant["business"]
+    prompt = get_system_prompt(business, customer_phone="+923001234567")
+
+    assert "+923001234567" in prompt
+    assert "NEVER ask the customer for their phone number" in prompt
+    assert 'customer_phone="+923001234567"' in prompt
+
+
+@pytest.mark.asyncio
+async def test_process_waha_message_task_passes_customer_phone(clinic_tenant_a):
+    business = clinic_tenant_a["business"]
+    session_name = f"clinic_{business.id}"
+    sender_chat_id = "923001234567@c.us"
+    user_text = "Book appointment for Dr John"
+
+    with patch("app.routers.waha.process_chat") as mock_chat, \
+         patch("app.services.waha_service.send_waha_text", new_callable=AsyncMock) as mock_send:
+        mock_chat.return_value = {"text": "Appointment booked"}
+        mock_send.return_value = True
+
+        await process_waha_message_task(
+            session_name=session_name,
+            sender_chat_id=sender_chat_id,
+            user_text=user_text
+        )
+
+        mock_chat.assert_called_once()
+        call_kwargs = mock_chat.call_args.kwargs
+        assert call_kwargs["customer_phone"] == "+923001234567"

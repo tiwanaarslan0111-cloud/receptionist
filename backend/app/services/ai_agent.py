@@ -89,32 +89,46 @@ CAPABILITIES & MODALITY RULES:
 - Keep spoken replies under 30 words so that text-to-speech synthesis is snappy, natural, and conversational.
 """
 
-def get_system_prompt(business: Business) -> str:
+def get_system_prompt(business: Business, customer_phone: Optional[str] = None) -> str:
     now_dt = datetime.now()
     current_date_str = now_dt.strftime("%Y-%m-%d (%A)")
     current_time_str = now_dt.strftime("%I:%M %p")
+
+    contact_section = ""
+    if customer_phone and customer_phone.strip():
+        c_phone = customer_phone.strip()
+        contact_section = f"""
+KNOWN CUSTOMER CONTACT INFO:
+- Customer WhatsApp Phone Number: {c_phone}
+- MANDATORY RULE: The user is messaging directly from this WhatsApp number: {c_phone}.
+- NEVER ask the customer for their phone number! You already have it ({c_phone}).
+- When calling `book_appointment`, automatically pass `patient_phone="{c_phone}"`.
+- When calling `place_order` or `reserve_table_and_order`, automatically pass `customer_phone="{c_phone}"`.
+- When checking status with `get_order_status`, use `customer_phone="{c_phone}"`.
+"""
 
     if business.business_type == "clinic":
         base_prompt = f"""You are Ayesha, a warm, polite, and efficient bilingual medical receptionist at {business.name}.
 Today's Date: {current_date_str}, Current Time: {current_time_str}.
 (Use this for relative dates like "aaj", "today", "kal", "tomorrow", "parso").
-
+{contact_section}
 CRITICAL RULES:
 1. SCRIPT & LANGUAGE STRICT MATCHING:
    - If the user uses Latin alphabet (English or Roman Urdu such as "g", "aaj", "doctor chahiye", "kal ki", "theek hai"), YOU MUST REPLY IN ROMAN URDU OR ENGLISH. NEVER USE ARABIC/URDU SCRIPT (اردو رسم الخط) unless the user typed in actual Urdu script characters.
-   - Default to polite Roman Urdu when user speaks Roman Urdu (e.g., "Ji bilkul", "Aap ka naam aur number?").
+   - Default to polite Roman Urdu when user speaks Roman Urdu (e.g., "Ji bilkul", "Aap ka naam?").
 
 2. MEMORY & NO REDUNDANT QUESTIONS:
    - NEVER ask for information the user has already provided in the conversation history!
+   - NEVER ask for phone number if known above!
    - If the user already told you:
      * Doctor name -> Do NOT ask which doctor they want.
      * Date/Time -> Do NOT ask for date/time again.
-     * Name & Phone -> Do NOT ask for name/phone again.
+     * Patient Name -> Do NOT ask for name again.
    - If you have: Doctor + Date + Preferred Time:
      * Call `check_doctor_slots` immediately.
      * If a matching slot exists, offer it or book it.
-   - If you have: Doctor + Slot + Patient Name + Patient Phone:
-     * DO NOT ask another confirmation question! CALL `book_appointment` IMMEDIATELY using tool calls.
+   - If you have: Doctor + Slot + Patient Name:
+     * DO NOT ask another confirmation question! CALL `book_appointment` IMMEDIATELY using tool calls, using customer phone '{customer_phone or ""}'.
      * If symptoms were not given, default `symptoms` to "General Consultation" and complete the booking. Do not block the user.
 
 3. PROACTIVE EXECUTION:
@@ -125,7 +139,7 @@ CRITICAL RULES:
         base_prompt = f"""You are a warm, hospitable, and efficient bilingual host and order specialist at {business.name}.
 Today's Date: {current_date_str}, Current Time: {current_time_str}.
 (Use this for relative dates like "aaj", "today", "kal", "tomorrow").
-
+{contact_section}
 CRITICAL RESTAURANT ORDERING & CONVERSATION RULES:
 
 1. SCRIPT & LANGUAGE STRICT MATCHING:
@@ -144,20 +158,20 @@ CRITICAL RESTAURANT ORDERING & CONVERSATION RULES:
    - FULFILLMENT TYPE & DELIVERY DETAILS:
      * Confirm whether they want **Delivery** or **Pickup/Takeaway** (or Dine-in).
      * If Delivery: ask for their complete delivery address (House #, Street, Area) if not already given.
-     * Ask for their name and contact phone if not already provided in history.
+     * Ask for their name if not already provided in history. NEVER ask for phone number if known above!
    - MANDATORY ORDER CONFIRMATION BEFORE PLACING:
      * Before calling `place_order`, ALWAYS present a clear summary of the order:
        🛒 *Order Summary:*
        - [Qty]x [Item Name] @ Rs. [Price] = Rs. [Subtotal]
        - Total Bill: Rs. [Total]
        📍 Address: [Delivery Address or Pickup]
-       👤 Customer: [Name] ([Phone])
+       👤 Customer: [Name] ({customer_phone or '[Phone]'})
        📝 Special Notes: [Customizations if any]
      * Ask the user: "Kya main yeh order place kar doon?" / "Should I place this order for you?"
    - PLACING THE ORDER:
-     * When the customer confirms ("haan", "yes", "theek hai", "confirm", "proceed", "place it", "ji zaroor"), call `place_order` IMMEDIATELY using tool calls.
+     * When the customer confirms ("haan", "yes", "theek hai", "confirm", "proceed", "place it", "ji zaroor"), call `place_order` IMMEDIATELY using tool calls, using customer phone '{customer_phone or ""}'.
      * After tool execution, confirm with their Order Number (e.g. #ORD-1234), total amount, and reassure them:
-       "Aapka order kitchen ko send kar diya gaya hai! Jaise hi kitchen mein status change hoga, aapko yahan WhatsApp par update mil jayegi."
+       "Aapka order kitchen ko send kar diya گیا hai! Jaise hi kitchen mein status change hoga, aapko yahan WhatsApp par update mil jayegi."
    - ORDER STATUS INQUIRY:
      * If user asks about an existing order ("Mera order kahan hai?", "Is my food ready?", "ORD-1234 status"), call `get_order_status` and politely update them with the current status.
 
@@ -886,17 +900,18 @@ def process_chat(
     message: str,
     session_id: str,
     business: Business,
-    db: Session
+    db: Session,
+    customer_phone: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Orchestrates the chat turn:
-    1. Prepares session history with dynamic system prompt.
+    1. Prepares session history with dynamic system prompt and customer contact info.
     2. Runs LLM client with appropriate tools.
     3. Handles tool call executions and tool responses.
     4. Returns conversational response text and any booking action taken.
     """
     client, model_name = get_llm_client()
-    system_prompt = get_system_prompt(business)
+    system_prompt = get_system_prompt(business, customer_phone=customer_phone)
     session_key = f"{business.id}:{session_id}"
     history = get_session_history(session_key, system_prompt)
 
@@ -1004,13 +1019,14 @@ def process_chat(
                         symptoms = fn_args.get("symptoms", "")
                         if not symptoms or not str(symptoms).strip():
                             symptoms = "General Consultation"
+                        p_phone = str(fn_args.get("patient_phone", "")).strip() or (customer_phone.strip() if customer_phone else "")
                         tool_result = execute_book_appointment(
                             business.id,
                             db,
                             doctor_id=str(fn_args.get("doctor_id", "")),
                             slot_id=str(fn_args.get("slot_id", "")),
                             patient_name=str(fn_args.get("patient_name", "")),
-                            patient_phone=str(fn_args.get("patient_phone", "")),
+                            patient_phone=p_phone,
                             symptoms=symptoms
                         )
                         if tool_result.get("status") == "confirmed":
@@ -1030,11 +1046,12 @@ def process_chat(
                             time=fn_args.get("time", "")
                         )
                     elif clean_name == "reserve_table_and_order":
+                        c_phone = str(fn_args.get("customer_phone", "")).strip() or (customer_phone.strip() if customer_phone else "")
                         tool_result = execute_reserve_table_and_order(
                             business.id,
                             db,
                             customer_name=fn_args.get("customer_name", ""),
-                            customer_phone=fn_args.get("customer_phone", ""),
+                            customer_phone=c_phone,
                             date=fn_args.get("date", ""),
                             time=fn_args.get("time", ""),
                             party_size=int(fn_args.get("party_size", 1)),
@@ -1044,11 +1061,12 @@ def process_chat(
                             action_taken = "table_reserved"
                             booking_details = tool_result
                     elif clean_name == "place_order":
+                        c_phone = str(fn_args.get("customer_phone", "")).strip() or (customer_phone.strip() if customer_phone else "")
                         tool_result = execute_place_order(
                             business.id,
                             db,
                             customer_name=fn_args.get("customer_name", "Valued Guest"),
-                            customer_phone=fn_args.get("customer_phone", ""),
+                            customer_phone=c_phone,
                             order_items=fn_args.get("order_items", []),
                             order_type=fn_args.get("order_type", "delivery"),
                             delivery_address=fn_args.get("delivery_address"),
@@ -1059,11 +1077,14 @@ def process_chat(
                             action_taken = "order_placed"
                             booking_details = tool_result
                     elif clean_name == "get_order_status":
+                        c_phone = fn_args.get("customer_phone")
+                        if (not c_phone or not str(c_phone).strip()) and customer_phone:
+                            c_phone = customer_phone.strip()
                         tool_result = execute_get_order_status(
                             business.id,
                             db,
                             order_number=fn_args.get("order_number"),
-                            customer_phone=fn_args.get("customer_phone")
+                            customer_phone=c_phone
                         )
                     else:
                         tool_result = {"error": f"Unknown tool: {clean_name}"}
