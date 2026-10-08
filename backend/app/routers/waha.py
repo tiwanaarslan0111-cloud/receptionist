@@ -44,10 +44,24 @@ def is_duplicate_message(msg_id: str) -> bool:
 router = APIRouter(prefix="/api/business/whatsapp", tags=["Business WhatsApp"])
 
 
+async def _resolve_business_session_name(business: Business) -> str:
+    """Returns the type-specific session name, or legacy 'clinic_<id>' if already connected in WAHA."""
+    session_name = waha_service.get_session_name(business.id, business.business_type)
+    if session_name != f"clinic_{business.id}":
+        try:
+            legacy_name = f"clinic_{business.id}"
+            legacy_status = await waha_service.get_waha_session_status(legacy_name)
+            if legacy_status == "WORKING":
+                return legacy_name
+        except Exception:
+            pass
+    return session_name
+
+
 @router.get("/status")
 async def check_whatsapp_status(current_business: Business = Depends(get_current_business)):
     """Returns the current connection status of the business WhatsApp session."""
-    session_name = waha_service.get_session_name(current_business.id)
+    session_name = await _resolve_business_session_name(current_business)
     status_str = await waha_service.get_waha_session_status(session_name)
     return {
         "session": session_name,
@@ -59,7 +73,7 @@ async def check_whatsapp_status(current_business: Business = Depends(get_current
 @router.get("/qr")
 async def get_connection_qr(current_business: Business = Depends(get_current_business)):
     """Returns the QR code data for the business owner to scan via WhatsApp Linked Devices."""
-    session_name = waha_service.get_session_name(current_business.id)
+    session_name = await _resolve_business_session_name(current_business)
     qr_data = await waha_service.get_waha_qr(session_name)
     status_str = await waha_service.get_waha_session_status(session_name)
 
@@ -76,7 +90,7 @@ async def get_connection_qr(current_business: Business = Depends(get_current_bus
 @router.post("/disconnect")
 async def disconnect_whatsapp(current_business: Business = Depends(get_current_business)):
     """Disconnects and logs out the linked WhatsApp Web device."""
-    session_name = waha_service.get_session_name(current_business.id)
+    session_name = await _resolve_business_session_name(current_business)
     success = await waha_service.stop_waha_session(session_name)
     return {"success": success}
 
@@ -84,8 +98,13 @@ async def disconnect_whatsapp(current_business: Business = Depends(get_current_b
 @router.post("/reset")
 async def reset_whatsapp_session(current_business: Business = Depends(get_current_business)):
     """Forces session teardown and prepares a brand-new QR code handshake."""
-    session_name = waha_service.get_session_name(current_business.id)
+    session_name = waha_service.get_session_name(current_business.id, current_business.business_type)
     await waha_service.reset_waha_session(session_name)
+    if session_name != f"clinic_{current_business.id}":
+        try:
+            await waha_service.reset_waha_session(f"clinic_{current_business.id}")
+        except Exception:
+            pass
     # Start fresh immediately
     await waha_service.get_or_start_waha_session(session_name)
     return {"status": "reset_complete"}
@@ -97,25 +116,29 @@ async def process_waha_message_task(session_name: str, sender_chat_id: str, user
     try:
         print(f"\n[WAHA AI Worker] Incoming message from {sender_chat_id} (Session: {session_name}): {user_text}")
 
-        # 1. Resolve business ID (handles 'clinic_<uuid>', 'clinic_<slug>', or fallback)
+        # 1. Resolve business ID (handles 'clinic_<uuid>', 'restaurant_<uuid>', 'biz_<uuid>', or fallback)
         business = None
-        if session_name.startswith("clinic_"):
-            raw_id = session_name.replace("clinic_", "").strip()
-            # Try UUID first
+        raw_id = session_name
+        for prefix in ("clinic_", "restaurant_", "biz_", "business_"):
+            if raw_id.startswith(prefix):
+                raw_id = raw_id[len(prefix):].strip()
+                break
+
+        # Try UUID first
+        try:
+            biz_uuid = UUID(raw_id)
+            business = db.query(Business).filter(Business.id == biz_uuid).first()
+        except (ValueError, AttributeError):
+            pass
+        except Exception:
+            db.rollback()
+
+        # Try slug next
+        if not business:
             try:
-                biz_uuid = UUID(raw_id)
-                business = db.query(Business).filter(Business.id == biz_uuid).first()
-            except (ValueError, AttributeError):
-                pass
+                business = db.query(Business).filter(Business.slug == raw_id).first()
             except Exception:
                 db.rollback()
-
-            # Try slug next
-            if not business:
-                try:
-                    business = db.query(Business).filter(Business.slug == raw_id).first()
-                except Exception:
-                    db.rollback()
 
         # If not resolved by session prefix, check configured fallback DEFAULT_BUSINESS_ID
         if not business:
@@ -150,6 +173,9 @@ async def process_waha_message_task(session_name: str, sender_chat_id: str, user
             logger.error(f"[WAHA Worker Error] No business found in database for session {session_name}")
             return
 
+        print(f"[WAHA AI Worker] Resolved business: '{business.name}' (Type: {business.business_type}, ID: {business.id})")
+        logger.info(f"[WAHA AI Worker] Resolved business: '{business.name}' (Type: {business.business_type}, ID: {business.id})")
+
         # 2. Extract clean phone and build session key
         clean_phone = sender_chat_id.split("@")[0]
         session_id = f"wa_qr_{business.id}_{clean_phone}"
@@ -180,6 +206,16 @@ async def process_waha_message_task(session_name: str, sender_chat_id: str, user
     except Exception as e:
         print(f"[WAHA Worker Exception] Error processing message: {e}")
         logger.error(f"[WAHA Worker Exception] Error processing message: {e}", exc_info=True)
+        try:
+            fallback_msg = "Aapka message receive ho gaya hai. Main aap ki kya madad kar sakta hoon? Please apna sawal dobara bataiye."
+            await waha_service.send_waha_text(
+                session_name=session_name,
+                chat_id=sender_chat_id,
+                message=fallback_msg
+            )
+            print(f"[WAHA Worker Fallback] Sent fallback reply to {sender_chat_id}")
+        except Exception as send_err:
+            logger.error(f"[WAHA Worker Fallback Error] Failed to send fallback reply: {send_err}")
     finally:
         db.close()
 

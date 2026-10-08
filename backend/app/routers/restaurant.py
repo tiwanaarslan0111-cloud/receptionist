@@ -220,8 +220,14 @@ async def send_order_status_notification(order_id: UUID, new_status: str, busine
         chat_id = customer_phone if customer_phone.endswith("@c.us") else f"{clean_num}@c.us"
 
         # 1. Try WAHA first
-        session_name = waha_service.get_session_name(business.id)
+        session_name = waha_service.get_session_name(business.id, business.business_type)
         waha_status = await waha_service.get_waha_session_status(session_name)
+        if waha_status != "WORKING" and session_name != f"clinic_{business.id}":
+            legacy_name = f"clinic_{business.id}"
+            legacy_status = await waha_service.get_waha_session_status(legacy_name)
+            if legacy_status == "WORKING":
+                session_name = legacy_name
+                waha_status = legacy_status
         sent = False
         if waha_status == "WORKING":
             sent = await waha_service.send_waha_text(session_name, chat_id, msg)

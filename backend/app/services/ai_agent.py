@@ -184,8 +184,8 @@ CLINIC_TOOLS = [
             "type": "object",
             "properties": {
               "symptom": {
-                "type": "string",
-                "description": "The symptom, condition, or specialty requested (e.g., flu, fever, back pain, cardiology, dentistry)"
+                "type": ["string", "null"],
+                "description": "The symptom, condition, or specialty requested (e.g., flu, fever, back pain, cardiology, dentistry). Pass null or empty string if general consultation is needed."
               }
             },
             "required": ["symptom"]
@@ -238,7 +238,7 @@ CLINIC_TOOLS = [
                 "description": "Contact phone number of the patient"
               },
               "symptoms": {
-                "type": "string",
+                "type": ["string", "null"],
                 "description": "Reported symptoms or reason for visit"
               }
             },
@@ -258,8 +258,8 @@ RESTAURANT_TOOLS = [
             "type": "object",
             "properties": {
               "category": {
-                "type": "string",
-                "description": "Optional category filter (e.g. Starters, Mains, Burgers, Pizzas, Desserts, Drinks)"
+                "type": ["string", "null"],
+                "description": "Optional category filter (e.g. Starters, Mains, Burgers, Pizzas, Desserts, Drinks). Pass null or empty string to retrieve all items."
               }
             }
           }
@@ -288,7 +288,7 @@ RESTAURANT_TOOLS = [
                   "properties": {
                     "item_name": {"type": "string", "description": "Name of the dish or menu item"},
                     "quantity": {"type": "integer", "description": "Quantity of portions/items (minimum 1)"},
-                    "notes": {"type": "string", "description": "Customizations like extra cheese, no onion, spicy, etc."}
+                    "notes": {"type": ["string", "null"], "description": "Customizations like extra cheese, no onion, spicy, etc."}
                   },
                   "required": ["item_name", "quantity"]
                 },
@@ -300,11 +300,11 @@ RESTAURANT_TOOLS = [
                 "description": "Fulfillment type: delivery, pickup, or dine_in (default: delivery)"
               },
               "delivery_address": {
-                "type": "string",
+                "type": ["string", "null"],
                 "description": "Full street/house address for delivery (required if order_type is delivery)"
               },
               "special_instructions": {
-                "type": "string",
+                "type": ["string", "null"],
                 "description": "Optional kitchen or rider delivery instructions"
               }
             },
@@ -321,11 +321,11 @@ RESTAURANT_TOOLS = [
             "type": "object",
             "properties": {
               "order_number": {
-                "type": "string",
+                "type": ["string", "null"],
                 "description": "Order number (e.g. ORD-1234 or 1234)"
               },
               "customer_phone": {
-                "type": "string",
+                "type": ["string", "null"],
                 "description": "Customer phone number"
               }
             }
@@ -386,7 +386,7 @@ RESTAURANT_TOOLS = [
                 "description": "Number of guests"
               },
               "order_items": {
-                "type": "array",
+                "type": ["array", "null"],
                 "items": {
                   "type": "object",
                   "properties": {
@@ -395,7 +395,7 @@ RESTAURANT_TOOLS = [
                   },
                   "required": ["item_name", "quantity"]
                 },
-                "description": "List of dishes and quantities pre-ordered by customer (empty list if table reservation only)"
+                "description": "List of dishes and quantities pre-ordered by customer (empty list or null if table reservation only)"
               }
             },
             "required": ["customer_name", "customer_phone", "date", "time", "party_size"]
@@ -406,27 +406,28 @@ RESTAURANT_TOOLS = [
 
 # ==================== TOOL EXECUTION IMPLEMENTATIONS ====================
 
-def execute_suggest_doctors(business_id: UUID, db: Session, symptom: str) -> Dict[str, Any]:
+def execute_suggest_doctors(business_id: UUID, db: Session, symptom: Optional[str] = None) -> Dict[str, Any]:
     doctors = db.query(Doctor).filter(Doctor.business_id == business_id).all()
     if not doctors:
         return {"doctors": [], "message": "No doctors currently registered at this clinic."}
 
-    s_clean = symptom.lower().strip()
+    s_clean = (symptom or "").lower().strip()
     matching_doctors = []
     
-    for doc in doctors:
-        specialty_match = s_clean in doc.specialty.lower()
-        symptom_match = any(s_clean in sym.lower() or sym.lower() in s_clean for sym in (doc.symptoms_treated or []))
-        if specialty_match or symptom_match:
-            matching_doctors.append({
-                "doctor_id": str(doc.id),
-                "name": doc.name,
-                "specialty": doc.specialty,
-                "symptoms_treated": doc.symptoms_treated,
-                "fee": float(doc.fee)
-            })
+    if s_clean:
+        for doc in doctors:
+            specialty_match = s_clean in doc.specialty.lower()
+            symptom_match = any(s_clean in sym.lower() or sym.lower() in s_clean for sym in (doc.symptoms_treated or []))
+            if specialty_match or symptom_match:
+                matching_doctors.append({
+                    "doctor_id": str(doc.id),
+                    "name": doc.name,
+                    "specialty": doc.specialty,
+                    "symptoms_treated": doc.symptoms_treated,
+                    "fee": float(doc.fee)
+                })
 
-    # If no specific keyword match found, return all available doctors with their specialties
+    # If no specific keyword match found or no symptom provided, return all available doctors with their specialties
     if not matching_doctors:
         return {
             "doctors": [
@@ -439,7 +440,7 @@ def execute_suggest_doctors(business_id: UUID, db: Session, symptom: str) -> Dic
                 }
                 for doc in doctors
             ],
-            "message": f"No doctor directly matched '{symptom}'. Here are all doctors available at our clinic:"
+            "message": f"Here are all doctors available at our clinic:" if not s_clean else f"No doctor directly matched '{symptom}'. Here are all doctors available at our clinic:"
         }
 
     return {"doctors": matching_doctors}
@@ -572,8 +573,8 @@ def execute_get_menu(business_id: UUID, db: Session, category: Optional[str] = N
         MenuItem.business_id == business_id,
         MenuItem.is_available == True
     )
-    if category:
-        query = query.filter(MenuItem.category.ilike(f"%{category.strip()}%"))
+    if category and str(category).strip():
+        query = query.filter(MenuItem.category.ilike(f"%{str(category).strip()}%"))
 
     items = query.order_by(MenuItem.category.asc(), MenuItem.name.asc()).all()
     return {
@@ -911,166 +912,197 @@ def process_chat(
     max_turns = 5
     turn_count = 0
 
-    while turn_count < max_turns:
-        turn_count += 1
+    try:
+        while turn_count < max_turns:
+            turn_count += 1
 
-        try:
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=history,
-                tools=tools,
-                tool_choice="auto"
-            )
-        except Exception as e:
-            err_str = str(e).lower()
-            if ("model_not_found" in err_str or "over capacity" in err_str) and model_name != "openai/gpt-oss-20b":
-                logger.warning(f"Model '{model_name}' unavailable ({e}). Falling back to 'openai/gpt-oss-20b'.")
-                model_name = "openai/gpt-oss-20b"
+            try:
                 response = client.chat.completions.create(
                     model=model_name,
                     messages=history,
                     tools=tools,
                     tool_choice="auto"
                 )
-            else:
-                raise
-
-        choice = response.choices[0]
-        assistant_msg = choice.message
-
-        # Format assistant message for history
-        assistant_dict: Dict[str, Any] = {
-            "role": "assistant",
-            "content": assistant_msg.content or ""
-        }
-
-        if assistant_msg.tool_calls:
-            sanitized_tool_calls = []
-            for tc in assistant_msg.tool_calls:
-                raw_name = tc.function.name or ""
-                clean_name = raw_name.split("<|")[0].split(" ")[0].strip()
-                sanitized_tool_calls.append({
-                    "id": tc.id,
-                    "type": tc.type,
-                    "function": {
-                        "name": clean_name,
-                        "arguments": tc.function.arguments
-                    }
-                })
-            assistant_dict["tool_calls"] = sanitized_tool_calls
-            history.append(assistant_dict)
-
-            # Execute all tool calls
-            for tool_call in assistant_msg.tool_calls:
-                raw_name = tool_call.function.name or ""
-                clean_name = raw_name.split("<|")[0].split(" ")[0].strip()
-                try:
-                    fn_args = json.loads(tool_call.function.arguments)
-                except Exception:
-                    fn_args = {}
-
-                tool_result: Dict[str, Any] = {}
-
-                if clean_name == "suggest_doctors":
-                    tool_result = execute_suggest_doctors(
-                        business.id, db, fn_args.get("symptom", "")
-                    )
-                elif clean_name == "check_doctor_slots":
-                    tool_result = execute_check_doctor_slots(
-                        business.id, db, fn_args.get("doctor_id", ""), fn_args.get("date", "")
-                    )
-                elif clean_name == "book_appointment":
-                    symptoms = fn_args.get("symptoms", "")
-                    if not symptoms or not str(symptoms).strip():
-                        symptoms = "General Consultation"
-                    tool_result = execute_book_appointment(
-                        business.id,
-                        db,
-                        doctor_id=str(fn_args.get("doctor_id", "")),
-                        slot_id=str(fn_args.get("slot_id", "")),
-                        patient_name=str(fn_args.get("patient_name", "")),
-                        patient_phone=str(fn_args.get("patient_phone", "")),
-                        symptoms=symptoms
-                    )
-                    if tool_result.get("status") == "confirmed":
-                        action_taken = "appointment_booked"
-                        booking_details = tool_result
-
-                elif clean_name == "get_menu":
-                    tool_result = execute_get_menu(
-                        business.id, db, fn_args.get("category")
-                    )
-                elif clean_name == "check_table_availability":
-                    tool_result = execute_check_table_availability(
-                        business.id,
-                        db,
-                        party_size=int(fn_args.get("party_size", 1)),
-                        date=fn_args.get("date", ""),
-                        time=fn_args.get("time", "")
-                    )
-                elif clean_name == "reserve_table_and_order":
-                    tool_result = execute_reserve_table_and_order(
-                        business.id,
-                        db,
-                        customer_name=fn_args.get("customer_name", ""),
-                        customer_phone=fn_args.get("customer_phone", ""),
-                        date=fn_args.get("date", ""),
-                        time=fn_args.get("time", ""),
-                        party_size=int(fn_args.get("party_size", 1)),
-                        order_items=fn_args.get("order_items")
-                    )
-                    if tool_result.get("status") == "confirmed":
-                        action_taken = "table_reserved"
-                        booking_details = tool_result
-                elif clean_name == "place_order":
-                    tool_result = execute_place_order(
-                        business.id,
-                        db,
-                        customer_name=fn_args.get("customer_name", "Valued Guest"),
-                        customer_phone=fn_args.get("customer_phone", ""),
-                        order_items=fn_args.get("order_items", []),
-                        order_type=fn_args.get("order_type", "delivery"),
-                        delivery_address=fn_args.get("delivery_address"),
-                        special_instructions=fn_args.get("special_instructions"),
-                        channel="whatsapp"
-                    )
-                    if tool_result.get("status") == "received":
-                        action_taken = "order_placed"
-                        booking_details = tool_result
-                elif clean_name == "get_order_status":
-                    tool_result = execute_get_order_status(
-                        business.id,
-                        db,
-                        order_number=fn_args.get("order_number"),
-                        customer_phone=fn_args.get("customer_phone")
-                    )
+            except Exception as e:
+                err_str = str(e).lower()
+                if ("model_not_found" in err_str or "over capacity" in err_str) and model_name != "openai/gpt-oss-20b":
+                    logger.warning(f"Model '{model_name}' unavailable ({e}). Falling back to 'openai/gpt-oss-20b'.")
+                    model_name = "openai/gpt-oss-20b"
+                    try:
+                        response = client.chat.completions.create(
+                            model=model_name,
+                            messages=history,
+                            tools=tools,
+                            tool_choice="auto"
+                        )
+                    except Exception as inner_e:
+                        logger.warning(f"Fallback model with tools failed: {inner_e}. Retrying without tools.")
+                        response = client.chat.completions.create(
+                            model=model_name,
+                            messages=history,
+                            tools=None
+                        )
+                elif ("tool" in err_str or "validation failed" in err_str or "invalid_request_error" in err_str) and tools:
+                    logger.warning(f"Tool call failed ({e}). Retrying with tools=None to prevent stall.")
+                    try:
+                        response = client.chat.completions.create(
+                            model=model_name,
+                            messages=history,
+                            tools=None
+                        )
+                    except Exception as text_e:
+                        logger.error(f"Text-only retry failed: {text_e}")
+                        raise
                 else:
-                    tool_result = {"error": f"Unknown tool: {clean_name}"}
+                    raise
 
-                # Append tool response
-                history.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "name": clean_name,
-                    "content": json.dumps(tool_result)
-                })
+            choice = response.choices[0]
+            assistant_msg = choice.message
 
-            # Continue loop to allow LLM to generate reply based on tool results
-            continue
-
-        else:
-            # Final text response from assistant
-            history.append(assistant_dict)
-            SESSION_STORE[session_key] = history
-            return {
-                "text": assistant_msg.content or "",
-                "action_taken": action_taken,
-                "booking_details": booking_details
+            # Format assistant message for history
+            assistant_dict: Dict[str, Any] = {
+                "role": "assistant",
+                "content": assistant_msg.content or ""
             }
 
-    SESSION_STORE[session_key] = history
-    return {
-        "text": "I have processed your request. Please let me know if you need anything else.",
-        "action_taken": action_taken,
-        "booking_details": booking_details
-    }
+            if assistant_msg.tool_calls:
+                sanitized_tool_calls = []
+                for tc in assistant_msg.tool_calls:
+                    raw_name = tc.function.name or ""
+                    clean_name = raw_name.split("<|")[0].split(" ")[0].strip()
+                    sanitized_tool_calls.append({
+                        "id": tc.id,
+                        "type": tc.type,
+                        "function": {
+                            "name": clean_name,
+                            "arguments": tc.function.arguments
+                        }
+                    })
+                assistant_dict["tool_calls"] = sanitized_tool_calls
+                history.append(assistant_dict)
+
+                # Execute all tool calls
+                for tool_call in assistant_msg.tool_calls:
+                    raw_name = tool_call.function.name or ""
+                    clean_name = raw_name.split("<|")[0].split(" ")[0].strip()
+                    try:
+                        fn_args = json.loads(tool_call.function.arguments)
+                    except Exception:
+                        fn_args = {}
+
+                    tool_result: Dict[str, Any] = {}
+
+                    if clean_name == "suggest_doctors":
+                        tool_result = execute_suggest_doctors(
+                            business.id, db, fn_args.get("symptom", "")
+                        )
+                    elif clean_name == "check_doctor_slots":
+                        tool_result = execute_check_doctor_slots(
+                            business.id, db, fn_args.get("doctor_id", ""), fn_args.get("date", "")
+                        )
+                    elif clean_name == "book_appointment":
+                        symptoms = fn_args.get("symptoms", "")
+                        if not symptoms or not str(symptoms).strip():
+                            symptoms = "General Consultation"
+                        tool_result = execute_book_appointment(
+                            business.id,
+                            db,
+                            doctor_id=str(fn_args.get("doctor_id", "")),
+                            slot_id=str(fn_args.get("slot_id", "")),
+                            patient_name=str(fn_args.get("patient_name", "")),
+                            patient_phone=str(fn_args.get("patient_phone", "")),
+                            symptoms=symptoms
+                        )
+                        if tool_result.get("status") == "confirmed":
+                            action_taken = "appointment_booked"
+                            booking_details = tool_result
+
+                    elif clean_name == "get_menu":
+                        tool_result = execute_get_menu(
+                            business.id, db, fn_args.get("category")
+                        )
+                    elif clean_name == "check_table_availability":
+                        tool_result = execute_check_table_availability(
+                            business.id,
+                            db,
+                            party_size=int(fn_args.get("party_size", 1)),
+                            date=fn_args.get("date", ""),
+                            time=fn_args.get("time", "")
+                        )
+                    elif clean_name == "reserve_table_and_order":
+                        tool_result = execute_reserve_table_and_order(
+                            business.id,
+                            db,
+                            customer_name=fn_args.get("customer_name", ""),
+                            customer_phone=fn_args.get("customer_phone", ""),
+                            date=fn_args.get("date", ""),
+                            time=fn_args.get("time", ""),
+                            party_size=int(fn_args.get("party_size", 1)),
+                            order_items=fn_args.get("order_items")
+                        )
+                        if tool_result.get("status") == "confirmed":
+                            action_taken = "table_reserved"
+                            booking_details = tool_result
+                    elif clean_name == "place_order":
+                        tool_result = execute_place_order(
+                            business.id,
+                            db,
+                            customer_name=fn_args.get("customer_name", "Valued Guest"),
+                            customer_phone=fn_args.get("customer_phone", ""),
+                            order_items=fn_args.get("order_items", []),
+                            order_type=fn_args.get("order_type", "delivery"),
+                            delivery_address=fn_args.get("delivery_address"),
+                            special_instructions=fn_args.get("special_instructions"),
+                            channel="whatsapp"
+                        )
+                        if tool_result.get("status") == "received":
+                            action_taken = "order_placed"
+                            booking_details = tool_result
+                    elif clean_name == "get_order_status":
+                        tool_result = execute_get_order_status(
+                            business.id,
+                            db,
+                            order_number=fn_args.get("order_number"),
+                            customer_phone=fn_args.get("customer_phone")
+                        )
+                    else:
+                        tool_result = {"error": f"Unknown tool: {clean_name}"}
+
+                    # Append tool response
+                    history.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": clean_name,
+                        "content": json.dumps(tool_result)
+                    })
+
+                # Continue loop to allow LLM to generate reply based on tool results
+                continue
+
+            else:
+                # Final text response from assistant
+                history.append(assistant_dict)
+                SESSION_STORE[session_key] = history
+                return {
+                    "text": assistant_msg.content or "",
+                    "action_taken": action_taken,
+                    "booking_details": booking_details
+                }
+
+        SESSION_STORE[session_key] = history
+        return {
+            "text": "I have processed your request. Please let me know if you need anything else.",
+            "action_taken": action_taken,
+            "booking_details": booking_details
+        }
+    except Exception as exc:
+        logger.error(f"[Process Chat Error] Unhandled agent exception: {exc}", exc_info=True)
+        if business.business_type == "clinic":
+            fallback_text = f"Assalam-o-alaikum! Welcome to {business.name}. Main aap ki appointment aur consultation mein kaise madad kar sakta hoon?"
+        else:
+            fallback_text = f"Assalam-o-alaikum! Welcome to {business.name}. Main aap ki kya khidmat kar sakta hoon? Aap menu dekhna chahte hain ya order place karna chahte hain?"
+        return {
+            "text": fallback_text,
+            "action_taken": None,
+            "booking_details": None
+        }

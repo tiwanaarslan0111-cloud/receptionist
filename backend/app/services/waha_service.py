@@ -20,8 +20,13 @@ def get_waha_webhook_url() -> str:
     return os.getenv("WAHA_WEBHOOK_URL", getattr(settings, "WAHA_WEBHOOK_URL", "http://backend:8000/api/business/whatsapp/webhook"))
 
 
-def get_session_name(business_id: Union[int, str, UUID]) -> str:
-    return f"clinic_{business_id}"
+def get_session_name(business_id: Union[int, str, UUID], business_type: Optional[str] = None) -> str:
+    """
+    Returns session name prefixed by business type (e.g. 'clinic_<id>' or 'restaurant_<id>').
+    Defaults to 'clinic' if business_type is omitted or None.
+    """
+    prefix = (business_type or "clinic").lower().strip()
+    return f"{prefix}_{business_id}"
 
 
 def _get_waha_headers() -> Dict[str, str]:

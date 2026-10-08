@@ -199,3 +199,54 @@ async def test_process_waha_message_task_execution(clinic_tenant_a):
             chat_id=sender_chat_id,
             message="We have an appointment tomorrow at 10 AM"
         )
+
+
+@pytest.mark.asyncio
+async def test_process_waha_message_task_restaurant_prefix(restaurant_tenant):
+    business = restaurant_tenant["business"]
+    session_name = f"restaurant_{business.id}"
+    sender_chat_id = "923001234567@c.us"
+    user_text = "What burgers do you have?"
+
+    with patch("app.routers.waha.process_chat") as mock_chat, \
+         patch("app.services.waha_service.send_waha_text", new_callable=AsyncMock) as mock_send:
+        mock_chat.return_value = {"text": "We have Zinger Burger for Rs. 550"}
+        mock_send.return_value = True
+
+        await process_waha_message_task(
+            session_name=session_name,
+            sender_chat_id=sender_chat_id,
+            user_text=user_text
+        )
+
+        mock_chat.assert_called_once()
+        call_kwargs = mock_chat.call_args.kwargs
+        assert call_kwargs["business"].id == business.id
+        assert call_kwargs["business"].business_type == "restaurant"
+
+
+def test_tool_schemas_and_handlers_allow_nullable(db: Session, restaurant_tenant, clinic_tenant_a):
+    from app.services.ai_agent import (
+        RESTAURANT_TOOLS,
+        CLINIC_TOOLS,
+        execute_get_menu,
+        execute_suggest_doctors,
+    )
+
+    # 1. Verify get_menu schema allows null category
+    get_menu_tool = next(t for t in RESTAURANT_TOOLS if t["function"]["name"] == "get_menu")
+    cat_type = get_menu_tool["function"]["parameters"]["properties"]["category"]["type"]
+    assert "null" in cat_type and "string" in cat_type
+
+    # 2. Verify book_appointment schema allows null symptoms
+    book_tool = next(t for t in CLINIC_TOOLS if t["function"]["name"] == "book_appointment")
+    symp_type = book_tool["function"]["parameters"]["properties"]["symptoms"]["type"]
+    assert "null" in symp_type and "string" in symp_type
+
+    # 3. Verify execute_get_menu works safely with None category
+    res_menu = execute_get_menu(restaurant_tenant["business"].id, db, category=None)
+    assert "menu_items" in res_menu
+
+    # 4. Verify execute_suggest_doctors works safely with None symptom
+    res_doc = execute_suggest_doctors(clinic_tenant_a["business"].id, db, symptom=None)
+    assert "doctors" in res_doc
