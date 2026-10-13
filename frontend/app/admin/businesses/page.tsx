@@ -20,7 +20,6 @@ import {
   CheckCircle2,
   X,
   Phone,
-  HelpCircle,
 } from "lucide-react";
 import {
   getAuth,
@@ -31,10 +30,6 @@ import {
   ProvisionBusinessResponse,
 } from "@/lib/api";
 import AddBusinessModal from "@/app/components/AddBusinessModal";
-import {
-  AdminOnboardingGuideModal,
-  AdminOnboardingGuideBanner,
-} from "@/app/components/AdminOnboardingGuide";
 import ThemeToggle from "@/app/components/ThemeToggle";
 
 export default function AdminBusinessesPage() {
@@ -48,8 +43,7 @@ export default function AdminBusinessesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "clinic" | "restaurant">("all");
 
-  // Onboarding Guide & Add Business Modals
-  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+  // Add Business Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Widget Details Modal
@@ -151,13 +145,6 @@ export default function AdminBusinessesPage() {
 
         <div className="flex items-center gap-2.5">
           <ThemeToggle />
-          <button
-            onClick={() => setIsGuideModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:text-white bg-emerald-950/60 hover:bg-emerald-900/80 rounded-xl border border-emerald-600/30 transition-all cursor-pointer shadow-sm shadow-emerald-900/20"
-          >
-            <HelpCircle className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden sm:inline">Onboarding Guide</span>
-          </button>
 
           <button
             onClick={() => loadBusinesses(adminSecret)}
@@ -180,13 +167,6 @@ export default function AdminBusinessesPage() {
 
       {/* Main Body */}
       <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
-        {/* Quick Onboarding Workflow Guide Banner */}
-        <AdminOnboardingGuideBanner
-          onOpenModal={() => setIsGuideModalOpen(true)}
-          onOpenAddBusiness={() => setIsAddModalOpen(true)}
-          defaultExpanded={true}
-        />
-
         {/* Metric Badges */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="p-4 rounded-2xl glass-panel border border-slate-800">
@@ -279,7 +259,7 @@ export default function AdminBusinessesPage() {
                     <th className="px-5 py-3 font-semibold">Business &amp; Slug</th>
                     <th className="px-5 py-3 font-semibold">Type</th>
                     <th className="px-5 py-3 font-semibold">Owner Account</th>
-                    <th className="px-5 py-3 font-semibold">WhatsApp Cloud Binding</th>
+                    <th className="px-5 py-3 font-semibold">WhatsApp Status</th>
                     <th className="px-5 py-3 font-semibold">Widget Status</th>
                     <th className="px-5 py-3 font-semibold text-right">Actions</th>
                   </tr>
@@ -417,13 +397,6 @@ export default function AdminBusinessesPage() {
         onSuccess={(newBiz) => {
           setBusinesses((prev) => [newBiz, ...prev]);
         }}
-      />
-
-      {/* Client Onboarding Guide Modal */}
-      <AdminOnboardingGuideModal
-        isOpen={isGuideModalOpen}
-        onClose={() => setIsGuideModalOpen(false)}
-        onOpenAddBusiness={() => setIsAddModalOpen(true)}
       />
 
       {/* Widget Embed Code Modal */}

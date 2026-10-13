@@ -52,6 +52,12 @@ export default function GlobalHeader() {
             Solutions
           </Link>
           <Link
+            href="/pricing"
+            className="hidden sm:inline-flex px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
+          >
+            Pricing
+          </Link>
+          <Link
             href="/#demo"
             className="hidden sm:inline-flex px-3 py-1.5 text-xs sm:text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 rounded-lg hover:bg-emerald-500/10 transition-colors"
           >

@@ -30,11 +30,7 @@ import {
   Users,
   Activity,
   ChevronRight,
-  ChevronDown,
-  ChevronUp,
   Menu,
-  HelpCircle,
-  MessageSquare,
 } from "lucide-react";
 import ThemeToggle from "../components/ThemeToggle";
 import {
@@ -53,10 +49,6 @@ import {
   API_BASE,
 } from "@/lib/api";
 import AddBusinessModal from "@/app/components/AddBusinessModal";
-import {
-  AdminOnboardingGuideModal,
-  AdminOnboardingGuideBanner,
-} from "@/app/components/AdminOnboardingGuide";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -64,7 +56,6 @@ export default function AdminPage() {
   const [adminSecret, setAdminSecret] = useState<string>("Arslan123");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
 
   // Business List State
   const [businesses, setBusinesses] = useState<BusinessResponse[]>([]);
@@ -85,10 +76,6 @@ export default function AdminPage() {
   const [slug, setSlug] = useState<string>("");
   const [slugEdited, setSlugEdited] = useState<boolean>(false);
   const [businessType, setBusinessType] = useState<"clinic" | "restaurant">("clinic");
-  const [inboundPhoneId, setInboundPhoneId] = useState<string>("");
-  const [displayPhoneNumber, setDisplayPhoneNumber] = useState<string>("");
-  const [wabaId, setWabaId] = useState<string>("");
-  const [showMetaSettings, setShowMetaSettings] = useState<boolean>(false);
   const [ownerEmail, setOwnerEmail] = useState<string>("");
   const [ownerPassword, setOwnerPassword] = useState<string>("");
   const [formLoading, setFormLoading] = useState<boolean>(false);
@@ -177,9 +164,6 @@ export default function AdminPage() {
           name: name.trim(),
           slug: slug.trim().toLowerCase(),
           type: businessType,
-          inbound_phone_id: inboundPhoneId.trim() || undefined,
-          display_phone_number: displayPhoneNumber.trim() || undefined,
-          waba_id: wabaId.trim() || undefined,
           owner_email: ownerEmail.trim().toLowerCase(),
           owner_password: ownerPassword.trim(),
         },
@@ -199,9 +183,6 @@ export default function AdminPage() {
     setName("");
     setSlug("");
     setSlugEdited(false);
-    setInboundPhoneId("");
-    setDisplayPhoneNumber("");
-    setWabaId("");
     setOwnerEmail("");
     setOwnerPassword("");
     setCreatedProvision(null);
@@ -454,13 +435,6 @@ export default function AdminPage() {
 
           <div className="flex items-center gap-2.5">
             <ThemeToggle />
-            <button
-              onClick={() => setIsGuideModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:text-white bg-emerald-950/60 hover:bg-emerald-900/80 rounded-xl border border-emerald-600/30 transition-all cursor-pointer shadow-sm shadow-emerald-900/20"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Onboarding Guide</span>
-            </button>
 
             <button
               onClick={handleRefresh}
@@ -491,13 +465,6 @@ export default function AdminPage() {
           {/* ==================== TAB 1: BUSINESSES ==================== */}
           {activeTab === "businesses" && (
             <div className="space-y-6">
-              {/* Quick Onboarding Workflow Guide Banner */}
-              <AdminOnboardingGuideBanner
-                onOpenModal={() => setIsGuideModalOpen(true)}
-                onOpenAddBusiness={() => setIsAddModalOpen(true)}
-                defaultExpanded={false}
-              />
-
               {/* Filter and Search Bar */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2 p-1 bg-slate-900/80 rounded-xl border border-slate-800 w-fit">
@@ -555,7 +522,7 @@ export default function AdminPage() {
                           <th className="px-5 py-3 font-semibold">Business</th>
                           <th className="px-5 py-3 font-semibold">Type</th>
                           <th className="px-5 py-3 font-semibold">Owner Account</th>
-                          <th className="px-5 py-3 font-semibold">WhatsApp Cloud Binding</th>
+                          <th className="px-5 py-3 font-semibold">WhatsApp Status</th>
                           <th className="px-5 py-3 font-semibold">AI Widget Status</th>
                           <th className="px-5 py-3 font-semibold text-right">Actions</th>
                         </tr>
@@ -806,7 +773,7 @@ export default function AdminPage() {
                   <div>
                     <h2 className="text-base font-bold text-white">Provision New Business Tenant</h2>
                     <p className="text-xs text-slate-400">
-                      Create business account, bind Meta WhatsApp credentials, and issue owner login access.
+                      Create business account, configure workspace, and issue owner login access.
                     </p>
                   </div>
                 </div>
@@ -881,24 +848,6 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                        <span className="text-slate-400 font-medium">Meta WhatsApp Phone ID</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-slate-200">
-                            {createdProvision.inbound_phone_id || <span className="italic text-slate-500">Not configured</span>}
-                          </span>
-                          {createdProvision.inbound_phone_id && (
-                            <button
-                              onClick={() => copyToClipboard(createdProvision.inbound_phone_id || "", "phone-created")}
-                              className="p-1 hover:text-white text-slate-400 transition-colors"
-                              title="Copy Phone ID"
-                            >
-                              {copiedKey === "phone-created" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
                       <div className="flex items-center justify-between">
                         <span className="text-slate-400 font-medium">Widget Token</span>
                         <div className="flex items-center gap-2">
@@ -928,7 +877,6 @@ export default function AdminPage() {
 🔗 Login Portal: ${loginUrl}
 👤 Username: ${createdProvision.owner_email}
 🔑 Temporary Password: ${ownerPassword}
-📱 WhatsApp Phone Number ID: ${createdProvision.inbound_phone_id || "Pending Setup"}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Please log in to manage your doctors, slots, and services.`;
                           copyToClipboard(text, "all-created");
@@ -1013,82 +961,6 @@ Please log in to manage your doctors, slots, and services.`;
                           </select>
                         </div>
                       </div>
-                    </div>
-
-                    {/* OPTIONAL ACCORDION: ADVANCED META CLOUD API SETTINGS */}
-                    <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => setShowMetaSettings(!showMetaSettings)}
-                        className="w-full flex items-center justify-between p-3.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-900/60 transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="w-3.5 h-3.5 text-teal-400" />
-                          <span>
-                            {showMetaSettings ? "−" : "+"} Advanced Meta Cloud API Settings (Optional)
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                          <span>{showMetaSettings ? "Hide" : "Expand"}</span>
-                          {showMetaSettings ? (
-                            <ChevronUp className="w-3.5 h-3.5" />
-                          ) : (
-                            <ChevronDown className="w-3.5 h-3.5" />
-                          )}
-                        </div>
-                      </button>
-
-                      {showMetaSettings && (
-                        <div className="p-4 pt-1 space-y-3.5 border-t border-slate-800/60 bg-slate-950/60">
-                          <p className="text-[11px] text-slate-400">
-                            Optional legacy Meta WhatsApp Cloud API credentials. Businesses can link their WhatsApp number via QR code directly in their dashboard.
-                          </p>
-
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-300 mb-1">
-                              Meta Phone Number ID
-                            </label>
-                            <input
-                              type="text"
-                              value={inboundPhoneId}
-                              onChange={(e) => setInboundPhoneId(e.target.value.trim())}
-                              placeholder="e.g. 104928372619482"
-                              className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 font-mono"
-                            />
-                            <p className="text-[10px] text-slate-500 mt-1">
-                              Obtained from Meta WhatsApp Manager &gt; Phone Numbers. Maps incoming webhook events to this business.
-                            </p>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                                Display Phone Number
-                              </label>
-                              <input
-                                type="text"
-                                value={displayPhoneNumber}
-                                onChange={(e) => setDisplayPhoneNumber(e.target.value)}
-                                placeholder="e.g. +92 300 1234567"
-                                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                                WABA ID <span className="text-slate-500 font-normal">(Optional)</span>
-                              </label>
-                              <input
-                                type="text"
-                                value={wabaId}
-                                onChange={(e) => setWabaId(e.target.value.trim())}
-                                placeholder="e.g. 1841329600331081"
-                                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 font-mono"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     {/* SECTION 2: TENANT OWNER LOGIN CREDENTIALS */}
@@ -1313,13 +1185,6 @@ Please log in to manage your doctors, slots, and services.`;
         onSuccess={(newBiz) => {
           setBusinesses((prev) => [newBiz, ...prev]);
         }}
-      />
-
-      {/* Client Onboarding Guide Modal */}
-      <AdminOnboardingGuideModal
-        isOpen={isGuideModalOpen}
-        onClose={() => setIsGuideModalOpen(false)}
-        onOpenAddBusiness={() => setIsAddModalOpen(true)}
       />
     </div>
   );

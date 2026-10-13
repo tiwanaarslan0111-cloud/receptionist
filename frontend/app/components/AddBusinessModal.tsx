@@ -10,14 +10,11 @@ import {
   Check,
   CheckCircle2,
   AlertCircle,
-  MessageSquare,
   Sparkles,
   ExternalLink,
   ShieldCheck,
   Stethoscope,
   UtensilsCrossed,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import {
   provisionBusiness,
@@ -43,12 +40,6 @@ export default function AddBusinessModal({
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
   const [businessType, setBusinessType] = useState<"clinic" | "restaurant">("clinic");
-
-  // WhatsApp Config
-  const [inboundPhoneId, setInboundPhoneId] = useState("");
-  const [displayPhoneNumber, setDisplayPhoneNumber] = useState("");
-  const [wabaId, setWabaId] = useState("");
-  const [showMetaSettings, setShowMetaSettings] = useState(false);
 
   // Owner Credentials
   const [ownerEmail, setOwnerEmail] = useState("");
@@ -104,7 +95,6 @@ export default function AddBusinessModal({
 🔗 Login Portal: ${loginUrl}
 👤 Username: ${createdResult.owner_email}
 🔑 Temporary Password: ${ownerPassword}
-📱 WhatsApp Phone Number ID: ${createdResult.inbound_phone_id || "Pending Setup"}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Please log in to manage your doctors, slots, and services.`;
 
@@ -121,9 +111,6 @@ Please log in to manage your doctors, slots, and services.`;
         name: name.trim(),
         slug: slug.trim().toLowerCase(),
         type: businessType,
-        inbound_phone_id: inboundPhoneId.trim() || undefined,
-        display_phone_number: displayPhoneNumber.trim() || undefined,
-        waba_id: wabaId.trim() || undefined,
         owner_email: ownerEmail.trim().toLowerCase(),
         owner_password: ownerPassword.trim(),
       };
@@ -143,10 +130,6 @@ Please log in to manage your doctors, slots, and services.`;
     setSlug("");
     setSlugEdited(false);
     setBusinessType("clinic");
-    setInboundPhoneId("");
-    setDisplayPhoneNumber("");
-    setWabaId("");
-    setShowMetaSettings(false);
     setOwnerEmail("");
     setOwnerPassword("");
     setCreatedResult(null);
@@ -248,24 +231,6 @@ Please log in to manage your doctors, slots, and services.`;
                     >
                       {copiedKey === "portal_url" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-800">
-                  <span className="text-slate-400 font-medium">Meta WhatsApp Phone ID</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-slate-200">
-                      {createdResult.inbound_phone_id || <span className="italic text-slate-500">Not configured</span>}
-                    </span>
-                    {createdResult.inbound_phone_id && (
-                      <button
-                        onClick={() => copyToClipboard(createdResult.inbound_phone_id || "", "phone_id")}
-                        className="p-1 hover:text-white text-slate-400 transition-colors"
-                        title="Copy Phone ID"
-                      >
-                        {copiedKey === "phone_id" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
-                    )}
                   </div>
                 </div>
 
@@ -372,82 +337,6 @@ Please log in to manage your doctors, slots, and services.`;
                     </select>
                   </div>
                 </div>
-              </div>
-
-              {/* OPTIONAL ACCORDION: ADVANCED META CLOUD API SETTINGS */}
-              <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowMetaSettings(!showMetaSettings)}
-                  className="w-full flex items-center justify-between p-3.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-900/60 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-3.5 h-3.5 text-teal-400" />
-                    <span>
-                      {showMetaSettings ? "−" : "+"} Advanced Meta Cloud API Settings (Optional)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                    <span>{showMetaSettings ? "Hide" : "Expand"}</span>
-                    {showMetaSettings ? (
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    ) : (
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    )}
-                  </div>
-                </button>
-
-                {showMetaSettings && (
-                  <div className="p-4 pt-1 space-y-3.5 border-t border-slate-800/60 bg-slate-950/60">
-                    <p className="text-[11px] text-slate-400">
-                      Optional legacy Meta WhatsApp Cloud API credentials. Businesses can link their WhatsApp number via QR code directly in their dashboard.
-                    </p>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Meta Phone Number ID
-                      </label>
-                      <input
-                        type="text"
-                        value={inboundPhoneId}
-                        onChange={(e) => setInboundPhoneId(e.target.value.trim())}
-                        placeholder="e.g. 104928372619482"
-                        className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 font-mono"
-                      />
-                      <p className="text-[10px] text-slate-500 mt-1">
-                        Obtained from Meta WhatsApp Manager &gt; Phone Numbers. Maps incoming webhook events to this clinic.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">
-                          Display Phone Number
-                        </label>
-                        <input
-                          type="text"
-                          value={displayPhoneNumber}
-                          onChange={(e) => setDisplayPhoneNumber(e.target.value)}
-                          placeholder="e.g. +92 300 1234567"
-                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">
-                          WABA ID <span className="text-slate-500 font-normal">(Optional)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={wabaId}
-                          onChange={(e) => setWabaId(e.target.value.trim())}
-                          placeholder="e.g. 1841329600331081"
-                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 font-mono"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* SECTION 2: TENANT OWNER LOGIN CREDENTIALS */}

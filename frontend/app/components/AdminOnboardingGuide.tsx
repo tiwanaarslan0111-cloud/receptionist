@@ -306,7 +306,7 @@ Please log in to set up your doctors, schedule slots, and consultation hours. Yo
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 transition-colors ml-auto"
+            className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-600/20 transition-all ml-auto cursor-pointer"
           >
             Got It
           </button>
