@@ -12,8 +12,24 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        background: "var(--bg)",
+        foreground: "var(--text)",
+        bg: "var(--bg)",
+        surface: "var(--surface)",
+        border: "var(--border)",
+        text: "var(--text)",
+        muted: "var(--muted)",
+        accent: {
+          DEFAULT: "var(--accent)",
+          hover: "var(--accent-hover)",
+        },
+      },
+      fontFamily: {
+        sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
+        serif: ["var(--font-newsreader)", "Newsreader", "Georgia", "serif"],
+      },
+      borderRadius: {
+        DEFAULT: "var(--radius)",
       },
     },
   },

@@ -117,7 +117,7 @@ export default function HomePage() {
     },
     {
       q: "What are the limits on the Free Plan?",
-      a: "The Free plan includes 1,000 confirmed appointments or kitchen orders per month. Once you grow beyond 1,000 bookings, you can seamlessly upgrade to the Unlimited Pro plan for Rs. 5,000/month.",
+      a: "The Free plan includes 200 confirmed appointments or kitchen orders per month. Furthermore, during our current Beta phase, all early access businesses receive 1 Full Year of the Unlimited Paid Pro Plan completely free!",
     },
   ];
 
@@ -127,29 +127,34 @@ export default function HomePage() {
       <div className="absolute top-20 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[550px] bg-gradient-to-b from-emerald-500/10 via-teal-500/5 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* ==================== 1. HERO SECTION ==================== */}
-      <section className="relative pt-12 pb-16 md:pt-20 md:pb-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <section className="relative pt-10 pb-16 md:pt-16 md:pb-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="text-center max-w-4xl mx-auto space-y-6">
-          {/* Top Pill Badge */}
-          <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 backdrop-blur-md shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-            <span>Autonomous Voice &amp; Chat AI Receptionist Platform</span>
-            <span className="text-slate-400">•</span>
-            <span className="text-emerald-800 dark:text-emerald-300 font-mono text-[11px] font-bold">
+          {/* Top Beta Badge */}
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 px-4 py-2 rounded-2xl bg-[#D97757]/15 border border-[#D97757]/30 text-[#D97757] dark:text-[#E58A6B] text-xs font-bold shadow-md shadow-[#D97757]/10">
+            <Sparkles className="w-4 h-4 text-[#D97757]" />
+            <span>Beta Mode Live: Get Early Access &amp; Enjoy 1 Year of Unlimited Pro Plan for FREE!</span>
+          </div>
+
+          <div className="flex items-center justify-center gap-2.5 text-xs text-[#5E5D59] dark:text-[#B0AEA5]">
+            <span className="w-2 h-2 rounded-full bg-[#D97757] animate-ping" />
+            <span>Autonomous Voice &amp; WhatsApp AI Reception Desk</span>
+            <span>•</span>
+            <span className="text-[#D97757] font-mono font-bold">
               {apiOnline ? "AI Engine Online" : "Connecting..."}
             </span>
           </div>
 
           {/* Main Title */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.12]">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-normal tracking-tight text-slate-900 dark:text-white leading-[1.12]">
             Never Miss a Patient or Guest Again. Meet Your{" "}
-            <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 dark:from-emerald-400 dark:via-teal-300 dark:to-cyan-400 bg-clip-text text-transparent">
+            <span className="text-[#D97757]">
               24/7 AI Receptionist
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base sm:text-lg lg:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-            Empower your medical clinic or restaurant with an autonomous bilingual receptionist. Speaks Roman Urdu &amp; English, locks appointments and dining tables in real-time, and embeds in 60 seconds.
+          <p className="text-base sm:text-lg lg:text-xl text-[#5E5D59] dark:text-[#B0AEA5] max-w-2xl mx-auto leading-relaxed">
+            Empower your medical clinic or restaurant with an autonomous bilingual receptionist. Speaks Roman Urdu &amp; English, locks appointments and dining tables in real-time. We are in Beta — sign up now for 1 Year of Unlimited access at zero cost!
           </p>
 
           {/* Primary Action Buttons */}
@@ -160,23 +165,23 @@ export default function HomePage() {
                 setLeadSubmitted(false);
                 setIsDemoModalOpen(true);
               }}
-              className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 transition-all shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-bold text-sm text-white bg-[#D97757] hover:bg-[#C6613F] transition-all shadow-lg shadow-[#D97757]/25 flex items-center justify-center gap-2.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
             >
               <Sparkles className="w-4 h-4" />
-              <span>Book a Live Demo</span>
+              <span>Claim Free 1-Year Early Access</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
             <Link
               href="/pricing"
-              className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 dark:text-slate-200 dark:bg-slate-900/90 dark:hover:bg-slate-800 dark:border-slate-700/80 hover:border-emerald-500/40 transition-all flex items-center justify-center gap-2 shadow-sm"
+              className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-bold text-sm text-slate-800 bg-[#F0EEE6] hover:bg-[#E8E6DC] border border-[#E8E6DC] dark:text-slate-200 dark:bg-[#30302E] dark:hover:bg-[#3D3D3A] dark:border-[#3D3D3A] hover:border-[#D97757]/40 transition-all flex items-center justify-center gap-2 shadow-sm"
             >
-              <span>Explore Pricing (Free Plan)</span>
+              <span>Explore Plans (200 Free Bookings)</span>
             </Link>
 
             <Link
               href="/login"
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl font-semibold text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors flex items-center justify-center gap-1.5"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl font-semibold text-sm text-[#5E5D59] hover:text-[#141413] dark:text-[#B0AEA5] dark:hover:text-white transition-colors flex items-center justify-center gap-1.5"
             >
               <span>Portal Login &rarr;</span>
             </Link>
@@ -598,27 +603,27 @@ export default function HomePage() {
                   </span>
                   <span className="text-xs text-slate-500 dark:text-slate-400">/ month</span>
                 </div>
-                <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#D97757]/10 text-[#D97757] border border-[#D97757]/20">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>1,000 Bookings / Orders Included</span>
+                  <span>200 Bookings / Orders Included</span>
                 </div>
               </div>
 
               <ul className="space-y-3 text-xs text-slate-700 dark:text-slate-300 mb-8">
                 <li className="flex items-start gap-2.5">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                  <span><strong>1,000 confirmed orders/bookings</strong> per month</span>
+                  <Check className="w-4 h-4 text-[#D97757] shrink-0 mt-0.5" />
+                  <span><strong>200 confirmed orders/bookings</strong> per month</span>
                 </li>
                 <li className="flex items-start gap-2.5">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[#D97757] shrink-0 mt-0.5" />
                   <span>Bilingual Roman Urdu &amp; English AI voice synthesis</span>
                 </li>
                 <li className="flex items-start gap-2.5">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[#D97757] shrink-0 mt-0.5" />
                   <span>WhatsApp QR gateway integration &amp; Web widget</span>
                 </li>
                 <li className="flex items-start gap-2.5">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[#D97757] shrink-0 mt-0.5" />
                   <span>Atomic database slot locking with zero conflicts</span>
                 </li>
               </ul>
@@ -626,17 +631,17 @@ export default function HomePage() {
 
             <Link
               href="/pricing"
-              className="w-full py-3.5 px-4 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm text-center"
+              className="w-full py-3.5 px-4 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 bg-[#F0EEE6] hover:bg-[#E8E6DC] dark:bg-[#30302E] dark:hover:bg-[#3D3D3A] border border-[#E8E6DC] dark:border-[#3D3D3A] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm text-center"
             >
-              <span>Get Started Free (1,000 Bookings)</span>
+              <span>Get Started Free (200 Bookings)</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
 
           {/* Card 2: Pro Unlimited Plan */}
-          <div className="glass-panel p-8 rounded-3xl border-2 border-emerald-500/60 dark:border-emerald-500/80 flex flex-col justify-between shadow-xl relative glow-emerald">
-            <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30">
-              Recommended
+          <div className="glass-panel p-8 rounded-3xl border-2 border-[#D97757] flex flex-col justify-between shadow-xl relative">
+            <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#D97757] text-white shadow-md shadow-[#D97757]/30">
+              Beta Special: 1 Year Free
             </div>
 
             <div>
@@ -644,27 +649,27 @@ export default function HomePage() {
                 <div>
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <span>Professional Pro</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                    <span className="w-2 h-2 rounded-full bg-[#D97757] animate-ping" />
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     For multi-physician clinics &amp; busy restaurants
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/30">
+                <div className="w-10 h-10 rounded-xl bg-[#D97757] flex items-center justify-center text-white shadow-md shadow-[#D97757]/30">
                   <Zap className="w-5 h-5" />
                 </div>
               </div>
 
               <div className="my-6 pb-6 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-4xl font-extrabold text-slate-900 dark:text-white font-mono">
-                    Rs. 5,000
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-[#D97757] font-mono">
+                    Free (Beta)
                   </span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">/ month</span>
+                  <span className="text-xs text-slate-400 line-through">Rs. 5,000/mo</span>
                 </div>
-                <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-600/15 to-teal-600/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#D97757]/15 text-[#D97757] dark:text-[#E58A6B] border border-[#D97757]/30">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Unlimited Orders &amp; Bookings</span>
+                  <span>1 Year Free Unlimited Early Access</span>
                 </div>
               </div>
 

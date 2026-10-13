@@ -28,9 +28,11 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
     const nextTheme = theme === "dark" ? "light" : "dark";
     if (nextTheme === "dark") {
       document.documentElement.classList.add("dark");
+      document.documentElement.setAttribute("data-theme", "dark");
       localStorage.setItem("theme", "dark");
     } else {
       document.documentElement.classList.remove("dark");
+      document.documentElement.setAttribute("data-theme", "light");
       localStorage.setItem("theme", "light");
     }
     setTheme(nextTheme);

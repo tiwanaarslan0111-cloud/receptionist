@@ -67,8 +67,8 @@ export default function PricingPage() {
 
   const faqs = [
     {
-      q: "What counts towards the 1,000 monthly bookings/orders on the Free plan?",
-      a: "Every appointment successfully scheduled for a physician or dining order confirmed for a restaurant counts as 1 booking. General inquiry conversations, FAQs, and symptom triages are completely unlimited.",
+      q: "What counts towards the 200 monthly bookings/orders on the Free plan?",
+      a: "Every appointment successfully scheduled for a physician or dining order confirmed for a restaurant counts as 1 booking. General inquiry conversations, FAQs, and symptom triages are completely unlimited. Plus, during our current Beta launch, early access businesses get 1 Full Year of the Unlimited Pro plan completely free!",
     },
     {
       q: "Can I use my existing WhatsApp business number?",
@@ -95,18 +95,18 @@ export default function PricingPage() {
 
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-4 mb-14">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Transparent &amp; Simple Pricing</span>
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#D97757]/15 border border-[#D97757]/30 text-[#D97757] dark:text-[#E58A6B] text-xs font-bold shadow-md shadow-[#D97757]/10">
+          <Sparkles className="w-4 h-4 text-[#D97757]" />
+          <span>Beta Launch: Get Early Access &amp; Enjoy 1 Year of Unlimited Pro Plan for FREE!</span>
         </div>
-        <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+        <h1 className="text-3xl sm:text-5xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
           Pick the Plan that Powers Your{" "}
-          <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 dark:from-emerald-400 dark:via-teal-300 dark:to-cyan-400 bg-clip-text text-transparent">
+          <span className="text-[#D97757]">
             AI Reception Desk
           </span>
         </h1>
-        <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-xl mx-auto leading-relaxed">
-          No hidden fees. No hardware required. Start free with 1,000 monthly bookings, or upgrade to Pro for unlimited volume.
+        <p className="text-sm sm:text-base text-[#5E5D59] dark:text-[#B0AEA5] max-w-xl mx-auto leading-relaxed">
+          No hidden fees. No hardware required. Start free with 200 monthly bookings, or claim 1 Year of Unlimited Pro access completely free in our Beta launch.
         </p>
 
         {/* Monthly / Annual Toggle */}
@@ -174,17 +174,17 @@ export default function PricingPage() {
                 </span>
                 <span className="text-xs text-slate-500 dark:text-slate-400">/ month</span>
               </div>
-              <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+              <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#D97757]/10 text-[#D97757] border border-[#D97757]/20">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>1,000 Bookings / Orders Included</span>
+                <span>200 Bookings / Orders Included</span>
               </div>
             </div>
 
             {/* Features List */}
             <ul className="space-y-3.5 text-xs text-slate-700 dark:text-slate-300 mb-8">
               <li className="flex items-start gap-2.5">
-                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                <span><strong>1,000 confirmed bookings &amp; orders</strong> per month</span>
+                <Check className="w-4 h-4 text-[#D97757] shrink-0 mt-0.5" />
+                <span><strong>200 confirmed bookings &amp; orders</strong> per month</span>
               </li>
               <li className="flex items-start gap-2.5">
                 <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
@@ -248,17 +248,17 @@ export default function PricingPage() {
 
             {/* Price block */}
             <div className="my-6 pb-6 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-4xl sm:text-5xl font-extrabold text-slate-900 dark:text-white font-mono">
-                  {billingCycle === "monthly" ? "Rs. 5,000" : "Rs. 4,000"}
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl sm:text-4xl font-extrabold text-[#D97757] font-mono">
+                  Free (Beta)
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  / month {billingCycle === "annual" && "(billed annually)"}
+                <span className="text-xs text-slate-400 line-through">
+                  {billingCycle === "monthly" ? "Rs. 5,000/mo" : "Rs. 4,000/mo"}
                 </span>
               </div>
-              <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-600/15 to-teal-600/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+              <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#D97757]/15 text-[#D97757] dark:text-[#E58A6B] border border-[#D97757]/30">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Unlimited Orders &amp; Bookings</span>
+                <span>1 Year Free Unlimited Early Access</span>
               </div>
             </div>
 
@@ -334,8 +334,8 @@ export default function PricingPage() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 <tr>
                   <td className="py-3 px-6 font-medium text-slate-900 dark:text-white">Monthly Bookings / Orders</td>
-                  <td className="py-3 px-6 text-center text-slate-600 dark:text-slate-300">1,000 / month</td>
-                  <td className="py-3 px-6 text-center font-bold text-emerald-600 dark:text-emerald-400">Unlimited</td>
+                  <td className="py-3 px-6 text-center text-slate-600 dark:text-slate-300">200 / month</td>
+                  <td className="py-3 px-6 text-center font-bold text-[#D97757]">Unlimited</td>
                 </tr>
                 <tr>
                   <td className="py-3 px-6 font-medium text-slate-900 dark:text-white">Bilingual Roman Urdu &amp; English</td>
@@ -464,8 +464,8 @@ export default function PricingPage() {
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {selectedPlan === "free"
-                      ? "1,000 monthly bookings included • Free forever"
-                      : "Unlimited bookings & orders • Rs. 5,000 / month"}
+                      ? "200 monthly bookings included • Free forever"
+                      : "Beta Early Access: 1 Year Free Unlimited (Normally Rs. 5,000/mo)"}
                   </p>
                 </div>
               </div>
